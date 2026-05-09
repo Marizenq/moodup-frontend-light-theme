@@ -5,10 +5,13 @@ import {
   TextInput,
   Pressable,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { api } from "../../src/services/api";
+import { useRouter } from "expo-router";
 
 export default function EsqueciSenha() {
+  const router = useRouter();
   const [step, setStep] = useState<"email" | "code">("email");
 
   const [email, setEmail] = useState("");
@@ -48,6 +51,24 @@ export default function EsqueciSenha() {
 
   async function redefinirSenha() {
     setErro("");
+    setMsg("");
+
+    // Validações básicas
+    if (!password || !confirm) {
+      setErro("Preencha todos os campos");
+      return;
+    }
+
+    if (password !== confirm) {
+      setErro("As senhas não coincidem");
+      return;
+    }
+
+    if (password.length < 6) {
+      setErro("A senha deve ter no mínimo 6 caracteres");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -59,8 +80,21 @@ export default function EsqueciSenha() {
       });
 
       setMsg("Senha redefinida com sucesso 🎉");
+      
+      // Aguarda 2 segundos e volta para o login
+      setTimeout(() => {
+        router.replace("/login");
+      }, 2000);
+      
     } catch (e: any) {
-      setErro(e?.response?.data?.message || "Erro ao redefinir");
+      const errorMessage = e?.response?.data?.message;
+      
+      // Verifica se é o erro de senha igual à anterior
+      if (errorMessage && errorMessage.includes("não pode ser igual à senha atual")) {
+        setErro("❌ Você não pode usar a mesma senha. Escolha uma senha diferente da anterior.");
+      } else {
+        setErro(errorMessage || "Erro ao redefinir");
+      }
     } finally {
       setLoading(false);
     }
@@ -83,9 +117,11 @@ export default function EsqueciSenha() {
               placeholderTextColor="#94A3B8"
               value={email}
               onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
             />
 
-            <Pressable style={s.button} onPress={enviarEmail}>
+            <Pressable style={s.button} onPress={enviarEmail} disabled={loading}>
               <Text style={s.buttonText}>
                 {loading ? "Enviando..." : "Enviar código"}
               </Text>
@@ -96,21 +132,22 @@ export default function EsqueciSenha() {
         {step === "code" && (
           <>
             <Text style={s.subtitle}>
-              Digite o código enviado
+              Digite o código enviado para {email}
             </Text>
 
             <TextInput
               style={s.input}
-              placeholder="Código"
+              placeholder="Código de 6 dígitos"
               keyboardType="numeric"
               placeholderTextColor="#94A3B8"
               value={otp}
               onChangeText={setOtp}
+              maxLength={6}
             />
 
             <TextInput
               style={s.input}
-              placeholder="Nova senha"
+              placeholder="Nova senha (mínimo 6 caracteres)"
               placeholderTextColor="#94A3B8"
               secureTextEntry
               value={password}
@@ -119,14 +156,18 @@ export default function EsqueciSenha() {
 
             <TextInput
               style={s.input}
-              placeholder="Confirmar senha"
+              placeholder="Confirmar nova senha"
               placeholderTextColor="#94A3B8"
               secureTextEntry
               value={confirm}
               onChangeText={setConfirm}
             />
 
-            <Pressable style={s.button} onPress={redefinirSenha}>
+            <Pressable 
+              style={[s.button, loading && s.buttonDisabled]} 
+              onPress={redefinirSenha}
+              disabled={loading}
+            >
               <Text style={s.buttonText}>
                 {loading ? "Salvando..." : "Redefinir senha"}
               </Text>
@@ -134,12 +175,12 @@ export default function EsqueciSenha() {
 
             <Text style={s.timer}>
               {timer > 0
-                ? `Reenviar em ${timer}s`
-                : "Pode reenviar o código"}
+                ? `Reenviar código em ${timer}s`
+                : "Código expirado? Solicite um novo"}
             </Text>
 
             {timer === 0 && (
-              <Pressable onPress={enviarEmail}>
+              <Pressable onPress={enviarEmail} disabled={loading}>
                 <Text style={s.resend}>Reenviar código</Text>
               </Pressable>
             )}
@@ -148,6 +189,10 @@ export default function EsqueciSenha() {
 
         {erro ? <Text style={s.error}>{erro}</Text> : null}
         {msg ? <Text style={s.success}>{msg}</Text> : null}
+
+        <Pressable onPress={() => router.back()} style={s.backButton}>
+          <Text style={s.backText}>Voltar para o login</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -199,6 +244,10 @@ const s = StyleSheet.create({
     marginTop: 10,
   },
 
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+
   buttonText: {
     color: "#02120F",
     fontWeight: "800",
@@ -221,11 +270,23 @@ const s = StyleSheet.create({
     color: "#F87171",
     marginTop: 10,
     textAlign: "center",
+    fontSize: 13,
   },
 
   success: {
     color: "#2dd4bf",
     marginTop: 10,
     textAlign: "center",
+    fontWeight: "600",
+  },
+
+  backButton: {
+    marginTop: 20,
+    alignItems: "center",
+  },
+
+  backText: {
+    color: "#94A3B8",
+    fontSize: 14,
   },
 });

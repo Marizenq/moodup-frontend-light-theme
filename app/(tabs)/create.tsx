@@ -12,6 +12,9 @@ import {
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { api } from "@/services/api";
+import { Ionicons } from "@expo/vector-icons";
+import { DatePickerModal } from "react-native-paper-dates";
+import { Provider as PaperProvider, DefaultTheme } from "react-native-paper";
 
 const MOODS = [
   { key: "muito_triste", emoji: "😞", label: "Muito mal" },
@@ -21,12 +24,26 @@ const MOODS = [
   { key: "muito_bem", emoji: "😁", label: "Ótimo" },
 ] as const;
 
+// Tema escuro para o date picker
+const theme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: "#2dd4bf",
+    surface: "#0F172A",
+    background: "#0F172A",
+    text: "#E5E7EB",
+    onSurface: "#E5E7EB",
+    backdrop: "rgba(0,0,0,0.7)",
+  },
+};
+
 export default function CreateMood() {
   const router = useRouter();
 
   const [title, setTitle] = useState("");
   const [level, setLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(new Date());
   const [note, setNote] = useState("");
   const [moodKey, setMoodKey] =
     useState<(typeof MOODS)[number]["key"]>("neutro");
@@ -40,11 +57,14 @@ export default function CreateMood() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showSavedToast, setShowSavedToast] = useState(false);
   const [triggerNamesForHelp, setTriggerNamesForHelp] = useState("");
+  
+  // State para o DatePickerModal
+  const [openDatePicker, setOpenDatePicker] = useState(false);
 
   const resetForm = useCallback(() => {
     setTitle("");
     setLevel(3);
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(new Date());
     setNote("");
     setMoodKey("neutro");
     setSelectedTriggers([]);
@@ -106,6 +126,22 @@ export default function CreateMood() {
     }, 2500);
   }
 
+  // Formata a data para exibição
+  function formatDateToDisplay(dateObj: Date) {
+    const day = dateObj.getDate().toString().padStart(2, '0');
+    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+    const year = dateObj.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  // Formata a data para API (YYYY-MM-DD)
+  function formatDateToAPI(dateObj: Date) {
+    const day = dateObj.getDate().toString().padStart(2, '0');
+    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+    const year = dateObj.getFullYear();
+    return `${year}-${month}-${day}`;
+  }
+
   async function handleCreate() {
     setErro("");
 
@@ -121,7 +157,7 @@ export default function CreateMood() {
         title: title.trim(),
         level: lvl,
         score: lvl,
-        date,
+        date: formatDateToAPI(date),
         note: note.trim() ? note.trim() : null,
         mood: moodKey,
         trigger_ids: selectedTriggers,
@@ -181,188 +217,220 @@ export default function CreateMood() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <View style={s.container}>
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={s.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={s.card}>
-            <Text style={s.title}>Criar mood</Text>
-            <Text style={s.subtitle}>Registre como você está hoje</Text>
+    <PaperProvider theme={theme}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <View style={s.container}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={s.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={s.card}>
+              <Text style={s.title}>Criar mood</Text>
+              <Text style={s.subtitle}>Registre como você está hoje</Text>
 
-            <Text style={s.label}>Humor</Text>
-            <View style={s.row}>
-              {MOODS.map((m) => {
-                const active = m.key === moodKey;
-                return (
-                  <Pressable
-                    key={m.key}
-                    onPress={() => setMoodKey(m.key)}
-                    style={[s.emojiBtn, active && s.emojiBtnActive]}
-                  >
-                    <Text style={s.emoji}>{m.emoji}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+              <Text style={s.label}>Humor</Text>
+              <View style={s.row}>
+                {MOODS.map((m) => {
+                  const active = m.key === moodKey;
+                  return (
+                    <Pressable
+                      key={m.key}
+                      onPress={() => setMoodKey(m.key)}
+                      style={[s.emojiBtn, active && s.emojiBtnActive]}
+                    >
+                      <Text style={s.emoji}>{m.emoji}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
 
-            <Text style={s.muted}>
-              Selecionado: {moodSelected?.emoji} • {moodSelected?.label}
-            </Text>
+              <Text style={s.muted}>
+                Selecionado: {moodSelected?.emoji} • {moodSelected?.label}
+              </Text>
 
-            <Text style={s.label}>Como você descreve hoje?</Text>
-            <TextInput
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Ex: Produtivo, cansativo, inspirador..."
-              placeholderTextColor="#6B7280"
-              style={s.input}
-            />
+              <Text style={s.label}>Como você descreve hoje?</Text>
+              <TextInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Ex: Produtivo, cansativo, inspirador..."
+                placeholderTextColor="#6B7280"
+                style={s.input}
+              />
 
-            <Text style={s.label}>Nível (1 a 5)</Text>
-            <View style={s.levelRow}>
-              {[1, 2, 3, 4, 5].map((n) => {
-                const active = level === n;
-                return (
-                  <Pressable
-                    key={n}
-                    onPress={() => setLevel(n as any)}
-                    style={[s.levelBtn, active && s.levelBtnActive]}
-                  >
-                    <Text style={[s.levelText, active && s.levelTextActive]}>
-                      {n}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+              <Text style={s.label}>Nível (1 a 5)</Text>
+              <View style={s.levelRow}>
+                {[1, 2, 3, 4, 5].map((n) => {
+                  const active = level === n;
+                  return (
+                    <Pressable
+                      key={n}
+                      onPress={() => setLevel(n as any)}
+                      style={[s.levelBtn, active && s.levelBtnActive]}
+                    >
+                      <Text style={[s.levelText, active && s.levelTextActive]}>
+                        {n}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
 
-            <Text style={s.muted}>Intensidade: {levelText(level)}</Text>
+              <Text style={s.muted}>Intensidade: {levelText(level)}</Text>
 
-            <Text style={s.label}>Data (YYYY-MM-DD)</Text>
-            <TextInput
-              value={date}
-              onChangeText={setDate}
-              placeholder="2026-02-23"
-              placeholderTextColor="#6B7280"
-              style={s.input}
-            />
+              <Text style={s.label}>Data</Text>
 
-            <Text style={s.label}>O que pode ter influenciado esse humor?</Text>
-
-            {loadingTriggers ? (
-              <Text style={s.muted}>Carregando gatilhos...</Text>
-            ) : (
-              <>
-                <View style={s.triggersWrap}>
-                  {triggersList.map((trigger) => {
-                    const active = selectedTriggers.includes(trigger.id);
-
-                    return (
-                      <Pressable
-                        key={trigger.id}
-                        onPress={() => toggleTrigger(trigger.id)}
-                        style={[s.chip, active && s.chipActive]}
-                      >
-                        <Text style={[s.chipText, active && s.chipTextActive]}>
-                          {trigger.label || trigger.name}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
+              <Pressable
+                style={s.dateInput}
+                onPress={() => setOpenDatePicker(true)}
+              >
+                <View style={s.dateContent}>
+                  <Text style={s.dateText}>{formatDateToDisplay(date)}</Text>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={20}
+                    color="#94A3B8"
+                  />
                 </View>
+              </Pressable>
 
-                {selectedTriggers.length > 0 && (
-                  <Text style={s.muted}>
-                    {selectedTriggers.length} gatilho(s) selecionado(s)
-                  </Text>
-                )}
-              </>
-            )}
+              {/* DatePickerModal - funciona no web e mobile! */}
+              <DatePickerModal
+                locale="pt"
+                mode="single"
+                visible={openDatePicker}
+                onDismiss={() => setOpenDatePicker(false)}
+                date={date}
+                onConfirm={(params) => {
+                  setOpenDatePicker(false);
+                  if (params.date) {
+                    setDate(params.date);
+                  }
+                }}
+                validRange={{
+                  startDate: new Date(2020, 0, 1),
+                  endDate: new Date(2030, 11, 31),
+                }}
+                animationType="fade"
+                label="Selecione uma data"
+                saveLabel="Confirmar"
+                uppercase={false}
+              />
 
-            <Text style={s.label}>Observação (opcional)</Text>
-            <TextInput
-              value={note}
-              onChangeText={setNote}
-              placeholder="O que aconteceu hoje?"
-              placeholderTextColor="#6B7280"
-              style={[s.input, { height: 110 }]}
-              multiline
-            />
+              <Text style={s.label}>O que pode ter influenciado esse humor?</Text>
 
-            {erro ? <Text style={s.errorText}>{erro}</Text> : null}
+              {loadingTriggers ? (
+                <Text style={s.muted}>Carregando gatilhos...</Text>
+              ) : (
+                <>
+                  <View style={s.triggersWrap}>
+                    {triggersList.map((trigger) => {
+                      const active = selectedTriggers.includes(trigger.id);
 
-            <Pressable
-              onPress={handleCreate}
-              disabled={loading}
-              style={[s.button, loading && { opacity: 0.6 }]}
-            >
-              <Text style={s.buttonText}>
-                {loading ? "SALVANDO..." : "SALVAR"}
-              </Text>
-            </Pressable>
+                      return (
+                        <Pressable
+                          key={trigger.id}
+                          onPress={() => toggleTrigger(trigger.id)}
+                          style={[s.chip, active && s.chipActive]}
+                        >
+                          <Text style={[s.chipText, active && s.chipTextActive]}>
+                            {trigger.label || trigger.name}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
 
-            <Pressable
-              onPress={() => router.back()}
-              style={{ marginTop: 12, alignItems: "center" }}
-            >
-              <Text style={s.linkText}>Voltar</Text>
-            </Pressable>
+                  {selectedTriggers.length > 0 && (
+                    <Text style={s.muted}>
+                      {selectedTriggers.length} gatilho(s) selecionado(s)
+                    </Text>
+                  )}
+                </>
+              )}
 
-            <View style={{ height: 24 }} />
-          </View>
-        </ScrollView>
+              <Text style={s.label}>Observação (opcional)</Text>
+              <TextInput
+                value={note}
+                onChangeText={setNote}
+                placeholder="O que aconteceu hoje?"
+                placeholderTextColor="#6B7280"
+                style={[s.input, { height: 110 }]}
+                multiline
+              />
 
-        {showSavedToast && (
-          <View style={s.toast}>
-            <Text style={s.toastText}>Emoção salva com sucesso</Text>
-          </View>
-        )}
+              {erro ? <Text style={s.errorText}>{erro}</Text> : null}
 
-        <Modal
-          visible={showHelpModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowHelpModal(false)}
-        >
-          <View style={s.modalOverlay}>
-            <View style={s.modalContainer}>
-              <Text style={s.modalEmoji}>💬</Text>
+              <Pressable
+                onPress={handleCreate}
+                disabled={loading}
+                style={[s.button, loading && { opacity: 0.6 }]}
+              >
+                <Text style={s.buttonText}>
+                  {loading ? "SALVANDO..." : "SALVAR"}
+                </Text>
+              </Pressable>
 
-              <Text style={s.modalTitle}>Quer conversar sobre isso?</Text>
+              <Pressable
+                onPress={() => router.back()}
+                style={{ marginTop: 12, alignItems: "center" }}
+              >
+                <Text style={s.linkText}>Voltar</Text>
+              </Pressable>
 
-              <Text style={s.modalSubtitle}>
-                Percebemos que você está se sentindo mal relacionado a{" "}
-                {triggerNamesForHelp}. Gostaria de refletir um pouco e ver
-                algumas sugestões?
-              </Text>
+              <View style={{ height: 24 }} />
+            </View>
+          </ScrollView>
 
-              <View style={s.modalButtons}>
-                <Pressable
-                  style={[s.modalBtn, s.modalBtnSim]}
-                  onPress={() => handleHelpChoice(true)}
-                >
-                  <Text style={s.modalBtnSimText}>Sim, quero conversar</Text>
-                </Pressable>
+          {showSavedToast && (
+            <View style={s.toast}>
+              <Text style={s.toastText}>Emoção salva com sucesso</Text>
+            </View>
+          )}
 
-                <Pressable
-                  style={[s.modalBtn, s.modalBtnNao]}
-                  onPress={() => handleHelpChoice(false)}
-                >
-                  <Text style={s.modalBtnNaoText}>Agora não</Text>
-                </Pressable>
+          <Modal
+            visible={showHelpModal}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowHelpModal(false)}
+          >
+            <View style={s.modalOverlay}>
+              <View style={s.modalContainer}>
+                <Text style={s.modalEmoji}>💬</Text>
+
+                <Text style={s.modalTitle}>Quer conversar sobre isso?</Text>
+
+                <Text style={s.modalSubtitle}>
+                  Percebemos que você está se sentindo mal relacionado a{" "}
+                  {triggerNamesForHelp}. Gostaria de refletir um pouco e ver
+                  algumas sugestões?
+                </Text>
+
+                <View style={s.modalButtons}>
+                  <Pressable
+                    style={[s.modalBtn, s.modalBtnSim]}
+                    onPress={() => handleHelpChoice(true)}
+                  >
+                    <Text style={s.modalBtnSimText}>Sim, quero conversar</Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[s.modalBtn, s.modalBtnNao]}
+                    onPress={() => handleHelpChoice(false)}
+                  >
+                    <Text style={s.modalBtnNaoText}>Agora não</Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
-          </View>
-        </Modal>
-      </View>
-    </KeyboardAvoidingView>
+          </Modal>
+        </View>
+      </KeyboardAvoidingView>
+    </PaperProvider>
   );
 }
 
@@ -590,5 +658,22 @@ const s = StyleSheet.create({
     fontWeight: "500",
     fontSize: 13,
     textAlign: "center",
+  },
+  dateInput: {
+    backgroundColor: "#0B1220",
+    borderColor: "#243041",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  dateContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  dateText: {
+    color: "#E5E7EB",
+    fontSize: 16,
   },
 });
