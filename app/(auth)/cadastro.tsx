@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
+import { Picker } from "@react-native-picker/picker";
 import {
   Link,
   useRouter,
@@ -27,6 +28,37 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+const ESTADOS = [
+  { label: "Selecione seu estado", value: "" },
+  { label: "Acre", value: "AC" },
+  { label: "Alagoas", value: "AL" },
+  { label: "Amapá", value: "AP" },
+  { label: "Amazonas", value: "AM" },
+  { label: "Bahia", value: "BA" },
+  { label: "Ceará", value: "CE" },
+  { label: "Distrito Federal", value: "DF" },
+  { label: "Espírito Santo", value: "ES" },
+  { label: "Goiás", value: "GO" },
+  { label: "Maranhão", value: "MA" },
+  { label: "Mato Grosso", value: "MT" },
+  { label: "Mato Grosso do Sul", value: "MS" },
+  { label: "Minas Gerais", value: "MG" },
+  { label: "Pará", value: "PA" },
+  { label: "Paraíba", value: "PB" },
+  { label: "Paraná", value: "PR" },
+  { label: "Pernambuco", value: "PE" },
+  { label: "Piauí", value: "PI" },
+  { label: "Rio de Janeiro", value: "RJ" },
+  { label: "Rio Grande do Norte", value: "RN" },
+  { label: "Rio Grande do Sul", value: "RS" },
+  { label: "Rondônia", value: "RO" },
+  { label: "Roraima", value: "RR" },
+  { label: "Santa Catarina", value: "SC" },
+  { label: "São Paulo", value: "SP" },
+  { label: "Sergipe", value: "SE" },
+  { label: "Tocantins", value: "TO" },
+  { label: "Prefiro não responder", value: "PREFIRO_NAO_RESPONDER" },
+];
 export default function Cadastro() {
   const router = useRouter();
   const { fresh } = useLocalSearchParams<{ fresh?: string }>();
@@ -36,6 +68,10 @@ export default function Cadastro() {
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [sexo, setSexo] = useState("");
+  const [faixaEtaria, setFaixaEtaria] = useState('');
+  const [estado, setEstado] = useState("");
+  
 
   // 👁️ States para mostrar/ocultar senha
   const [showPassword, setShowPassword] = useState(false);
@@ -59,7 +95,7 @@ export default function Cadastro() {
       }
 
       prepareTermsFlag();
-    }, [fresh])
+    }, [fresh]),
   );
 
   async function handleCadastro() {
@@ -84,7 +120,20 @@ export default function Cadastro() {
       setErro("Email inválido.");
       return;
     }
+    if (!sexo) {
+      setErro("Informe seu sexo.");
+      return;
+    }
 
+    if (!faixaEtaria) {
+  setErro("Informe sua faixa etária.");
+  return;
+}
+
+    if (!estado) {
+      setErro("Informe seu estado.");
+      return;
+    }
     if (!passClean) {
       setErro("Informe uma senha.");
       return;
@@ -115,7 +164,7 @@ export default function Cadastro() {
           email: emailClean,
           password: passClean,
           password_confirmation: passConfClean,
-        })
+        }),
       );
 
       router.push("/terms?mode=cadastro");
@@ -128,6 +177,9 @@ export default function Cadastro() {
       const res = await api.post("/auth/register", {
         name: nameClean,
         email: emailClean,
+        sexo: sexo,
+        faixa_etaria: faixaEtaria,
+        estado: estado,
         password: passClean,
         password_confirmation: passConfClean,
         accepted_terms: true,
@@ -192,6 +244,60 @@ export default function Cadastro() {
           placeholderTextColor="#6B7280"
           style={styles.input}
         />
+
+        <Text style={styles.label}>Sexo</Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={sexo}
+            onValueChange={(itemValue) => setSexo(itemValue)}
+            dropdownIconColor="#E5E7EB"
+
+            style={styles.picker}
+          >
+            <Picker.Item label="Selecione seu sexo" value="" />
+            <Picker.Item label="Feminino" value="feminino" />
+            <Picker.Item label="Masculino" value="masculino" />
+            <Picker.Item label="Outro" value="outro" />
+          </Picker>
+        </View>
+
+        <Text style={styles.label}>Faixa etária</Text>
+<View style={styles.pickerContainer}>
+  <Picker
+    selectedValue={faixaEtaria}
+    onValueChange={(itemValue) => setFaixaEtaria(itemValue)}
+    style={styles.picker}
+    dropdownIconColor="#E5E7EB"
+  >
+    <Picker.Item label="Selecione sua faixa etária" value="" />
+    <Picker.Item label="14–17 anos" value="14-17" />
+    <Picker.Item label="18–24 anos" value="18-24" />
+    <Picker.Item label="25–34 anos" value="25-34" />
+    <Picker.Item label="35–44 anos" value="35-44" />
+    <Picker.Item label="45–54 anos" value="45-54" />
+    <Picker.Item label="55–64 anos" value="55-64" />
+    <Picker.Item label="65–70 anos" value="65-70" />
+    <Picker.Item label="Prefiro não responder" value="nao_informado" />
+  </Picker>
+</View>
+
+        <Text style={styles.label}>Estado</Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={estado}
+            onValueChange={(itemValue) => setEstado(itemValue)}
+            dropdownIconColor="#E5E7EB"
+            style={styles.picker}
+          >
+            {ESTADOS.map((estadoItem) => (
+              <Picker.Item
+                key={estadoItem.value}
+                label={estadoItem.label}
+                value={estadoItem.value}
+              />
+            ))}
+          </Picker>
+        </View>
 
         <Text style={styles.label}>Senha</Text>
         <View style={styles.passwordContainer}>
@@ -313,6 +419,19 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     color: "#E5E7EB",
   },
+  pickerContainer: {
+  backgroundColor: "#0B1220",
+  borderColor: "#243041",
+  borderWidth: 1,
+  borderRadius: 12,
+  overflow: "hidden",
+},
+
+picker: {
+  color: "#E5E7EB",
+  height: 52,
+  width: "100%",
+},
   passwordContainer: {
     position: "relative",
   },
