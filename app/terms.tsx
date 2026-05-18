@@ -47,21 +47,39 @@ export default function Terms() {
 
         const draft = JSON.parse(draftRaw);
 
-        if (!draft.name || !draft.email || !draft.password) {
-          Alert.alert("Erro", "Dados incompletos. Por favor, tente novamente.");
+        // Verificar todos os campos obrigatórios
+        if (!draft.name || !draft.email || !draft.password || !draft.sexo || !draft.faixaEtaria || !draft.estado) {
+          console.log("Dados faltando:", {
+            name: !!draft.name,
+            email: !!draft.email,
+            password: !!draft.password,
+            sexo: !!draft.sexo,
+            faixaEtaria: !!draft.faixaEtaria,
+            estado: !!draft.estado
+          });
+          Alert.alert("Erro", "Dados incompletos. Por favor, preencha todos os campos no cadastro.");
           setLoading(false);
           return;
         }
 
-        console.log("Enviando dados para cadastro...");
+        console.log("Enviando dados para cadastro...", {
+          name: draft.name,
+          email: draft.email,
+          sexo: draft.sexo,
+          faixa_etaria: draft.faixaEtaria,
+          estado: draft.estado,
+        });
 
+        // ✅ CORRIGIDO: Incluindo todos os campos
         const res = await api.post("/auth/register", {
           name: draft.name,
           email: draft.email,
+          sexo: draft.sexo,
+          faixa_etaria: draft.faixaEtaria,
+          estado: draft.estado,
           password: draft.password,
           password_confirmation: draft.password_confirmation,
           accepted_terms: true,
-          accepted_terms_at: new Date().toISOString(),
         });
 
         console.log("Cadastro realizado com sucesso!");
@@ -83,9 +101,7 @@ export default function Terms() {
         setRedirecting(true);
         setLoading(false);
 
-        // 🔥 REDIRECIONAMENTO CORRIGIDO
         router.replace("/(tabs)" as any);
-        
         return;
       }
 
@@ -110,7 +126,6 @@ export default function Terms() {
       setRedirecting(true);
       setLoading(false);
 
-      // 🔥 REDIRECIONAMENTO CORRIGIDO
       router.replace("/(tabs)" as any);
       
     } catch (error: any) {
@@ -119,6 +134,9 @@ export default function Terms() {
       let errorMessage = "Não foi possível concluir a operação.";
       if (error?.response?.data?.message) {
         errorMessage = error.response.data.message;
+      } else if (error?.response?.data?.errors) {
+        const errors = error.response.data.errors;
+        errorMessage = Object.values(errors).flat().join("\n");
       } else if (error?.message) {
         errorMessage = error.message;
       }
@@ -141,7 +159,7 @@ export default function Terms() {
     return (
       <View style={styles.container}>
         <View style={styles.card}>
-          <ActivityIndicator size="large" color="#6d5efc" />
+          <ActivityIndicator size="large" color="#2dd4bf" />
           <Text style={styles.redirectText}>Redirecionando para o app...</Text>
         </View>
       </View>
@@ -247,4 +265,103 @@ export default function Terms() {
   );
 }
 
-const styles = StyleSheet.create({ container: { flex: 1, backgroundColor: "#0B0F19", padding: 20, justifyContent: "center", }, card: { backgroundColor: "#0F172A", borderWidth: 1, borderColor: "#1F2937", borderRadius: 16, padding: 18, }, title: { color: "#E5E7EB", fontSize: 24, fontWeight: "700", marginBottom: 14, }, sectionTitle: { color: "#E5E7EB", fontSize: 16, fontWeight: "700", marginTop: 18, marginBottom: 8, }, text: { color: "#CBD5E1", fontSize: 14, lineHeight: 22, marginTop: 6, }, bullet: { color: "#CBD5E1", fontSize: 14, lineHeight: 22, marginTop: 6, paddingLeft: 8, }, warningBox: { marginTop: 20, backgroundColor: "rgba(220, 38, 38, 0.1)", borderColor: "rgba(220, 38, 38, 0.3)", borderWidth: 1, borderRadius: 14, padding: 14, }, warningTitle: { color: "#EF4444", fontWeight: "800", marginBottom: 8, fontSize: 14, }, warningText: { color: "#E5E7EB", lineHeight: 21, fontSize: 13, }, consentText: { color: "#9CA3AF", fontSize: 12, lineHeight: 18, marginTop: 20, marginBottom: 10, fontStyle: "italic", textAlign: "center", }, button: { marginTop: 22, backgroundColor: "#E91E63", paddingVertical: 14, borderRadius: 12, alignItems: "center", }, buttonText: { color: "#fff", fontWeight: "700", fontSize: 15, }, secondaryButton: { marginTop: 12, borderWidth: 1, borderColor: "rgba(255,255,255,.12)", paddingVertical: 14, borderRadius: 12, alignItems: "center", }, secondaryButtonText: { color: "#E5E7EB", fontWeight: "700", fontSize: 15, }, redirectText: { color: "#E5E7EB", textAlign: "center", marginTop: 20, fontSize: 16, }, });
+const styles = StyleSheet.create({ 
+  container: { 
+    flex: 1, 
+    backgroundColor: "#0B0F19", 
+    padding: 20, 
+    justifyContent: "center", 
+  }, 
+  card: { 
+    backgroundColor: "#0F172A", 
+    borderWidth: 1, 
+    borderColor: "#1F2937", 
+    borderRadius: 16, 
+    padding: 18, 
+  }, 
+  title: { 
+    color: "#E5E7EB", 
+    fontSize: 24, 
+    fontWeight: "700", 
+    marginBottom: 14, 
+  }, 
+  sectionTitle: { 
+    color: "#E5E7EB", 
+    fontSize: 16, 
+    fontWeight: "700", 
+    marginTop: 18, 
+    marginBottom: 8, 
+  }, 
+  text: { 
+    color: "#CBD5E1", 
+    fontSize: 14, 
+    lineHeight: 22, 
+    marginTop: 6, 
+  }, 
+  bullet: { 
+    color: "#CBD5E1", 
+    fontSize: 14, 
+    lineHeight: 22, 
+    marginTop: 6, 
+    paddingLeft: 8, 
+  }, 
+  warningBox: { 
+    marginTop: 20, 
+    backgroundColor: "rgba(220, 38, 38, 0.1)", 
+    borderColor: "rgba(220, 38, 38, 0.3)", 
+    borderWidth: 1, 
+    borderRadius: 14, 
+    padding: 14, 
+  }, 
+  warningTitle: { 
+    color: "#EF4444", 
+    fontWeight: "800", 
+    marginBottom: 8, 
+    fontSize: 14, 
+  }, 
+  warningText: { 
+    color: "#E5E7EB", 
+    lineHeight: 21, 
+    fontSize: 13, 
+  }, 
+  consentText: { 
+    color: "#9CA3AF", 
+    fontSize: 12, 
+    lineHeight: 18, 
+    marginTop: 20, 
+    marginBottom: 10, 
+    fontStyle: "italic", 
+    textAlign: "center", 
+  }, 
+  button: { 
+    marginTop: 22, 
+    backgroundColor: "#2dd4bf", 
+    paddingVertical: 14, 
+    borderRadius: 12, 
+    alignItems: "center", 
+  }, 
+  buttonText: { 
+    color: "#08101a", 
+    fontWeight: "700", 
+    fontSize: 15, 
+  }, 
+  secondaryButton: { 
+    marginTop: 12, 
+    borderWidth: 1, 
+    borderColor: "rgba(255,255,255,.12)", 
+    paddingVertical: 14, 
+    borderRadius: 12, 
+    alignItems: "center", 
+  }, 
+  secondaryButtonText: { 
+    color: "#E5E7EB", 
+    fontWeight: "700", 
+    fontSize: 15, 
+  }, 
+  redirectText: { 
+    color: "#E5E7EB", 
+    textAlign: "center", 
+    marginTop: 20, 
+    fontSize: 16, 
+  }, 
+});
