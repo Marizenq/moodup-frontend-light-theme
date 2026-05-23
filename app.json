@@ -4,7 +4,7 @@
     "slug": "moodup-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./src/assets/images/icon.png",
+    "icon": "./src/assets/images/icon.jpeg",
     "scheme": "moodupmobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -24,7 +24,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./src/assets/images/favicon.png"
+      "favicon": "./src/assets/images/icon.jpeg"
     },
     "plugins": [
       "expo-router",
