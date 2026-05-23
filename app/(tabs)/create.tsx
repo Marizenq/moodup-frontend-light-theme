@@ -24,7 +24,6 @@ const MOODS = [
   { key: "muito_bem", emoji: "😁", label: "Ótimo" },
 ] as const;
 
-// Tema escuro para o date picker
 const theme = {
   ...DefaultTheme,
   colors: {
@@ -40,6 +39,10 @@ const theme = {
 
 export default function CreateMood() {
   const router = useRouter();
+
+  const hoje = new Date();
+  const ontem = new Date();
+  ontem.setDate(hoje.getDate() - 1);
 
   const [title, setTitle] = useState("");
   const [level, setLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
@@ -57,8 +60,6 @@ export default function CreateMood() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showSavedToast, setShowSavedToast] = useState(false);
   const [triggerNamesForHelp, setTriggerNamesForHelp] = useState("");
-  
-  // State para o DatePickerModal
   const [openDatePicker, setOpenDatePicker] = useState(false);
 
   const resetForm = useCallback(() => {
@@ -126,24 +127,26 @@ export default function CreateMood() {
     }, 2500);
   }
 
-  // Formata a data para exibição
   function formatDateToDisplay(dateObj: Date) {
-    const day = dateObj.getDate().toString().padStart(2, '0');
-    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+    const day = dateObj.getDate().toString().padStart(2, "0");
+    const month = (dateObj.getMonth() + 1).toString().padStart(2, "0");
     const year = dateObj.getFullYear();
+
     return `${day}/${month}/${year}`;
   }
 
-  // Formata a data para API (YYYY-MM-DD)
   function formatDateToAPI(dateObj: Date) {
-    const day = dateObj.getDate().toString().padStart(2, '0');
-    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+    const day = dateObj.getDate().toString().padStart(2, "0");
+    const month = (dateObj.getMonth() + 1).toString().padStart(2, "0");
     const year = dateObj.getFullYear();
+
     return `${year}-${month}-${day}`;
   }
 
   async function handleCreate() {
     setErro("");
+
+    if (loading) return;
 
     if (!title.trim()) {
       setErro("Digite um título.");
@@ -165,7 +168,9 @@ export default function CreateMood() {
 
       showToast();
 
-      const humorRuim = moodKey === "muito_triste" || moodKey === "triste";
+      const humorRuim =
+        moodKey === "muito_triste" || moodKey === "triste";
+
       const temGatilho = selectedTriggers.length > 0;
 
       if (humorRuim && temGatilho) {
@@ -175,17 +180,22 @@ export default function CreateMood() {
             return trigger?.name || trigger?.label;
           })
           .filter(Boolean)
-          .join(",");
+          .join(", ");
 
         if (triggerNames) {
           setTriggerNamesForHelp(triggerNames);
-          setShowHelpModal(true);
+
+          setTimeout(() => {
+            setShowHelpModal(true);
+          }, 900);
+
           return;
         }
       }
 
-      resetForm();
-      router.replace("/(tabs)" as any);
+      setTimeout(() => {
+        resetForm();
+      }, 1200);
     } catch (e: any) {
       console.error("Erro ao salvar:", e?.response?.data || e);
       setErro(
@@ -213,7 +223,6 @@ export default function CreateMood() {
     }
 
     resetForm();
-    router.replace("/(tabs)" as any);
   }
 
   return (
@@ -234,9 +243,11 @@ export default function CreateMood() {
               <Text style={s.subtitle}>Registre como você está hoje</Text>
 
               <Text style={s.label}>Humor</Text>
+
               <View style={s.row}>
                 {MOODS.map((m) => {
                   const active = m.key === moodKey;
+
                   return (
                     <Pressable
                       key={m.key}
@@ -254,6 +265,7 @@ export default function CreateMood() {
               </Text>
 
               <Text style={s.label}>Como você descreve hoje?</Text>
+
               <TextInput
                 value={title}
                 onChangeText={setTitle}
@@ -263,9 +275,11 @@ export default function CreateMood() {
               />
 
               <Text style={s.label}>Nível (1 a 5)</Text>
+
               <View style={s.levelRow}>
                 {[1, 2, 3, 4, 5].map((n) => {
                   const active = level === n;
+
                   return (
                     <Pressable
                       key={n}
@@ -290,6 +304,7 @@ export default function CreateMood() {
               >
                 <View style={s.dateContent}>
                   <Text style={s.dateText}>{formatDateToDisplay(date)}</Text>
+
                   <Ionicons
                     name="calendar-outline"
                     size={20}
@@ -298,7 +313,6 @@ export default function CreateMood() {
                 </View>
               </Pressable>
 
-              {/* DatePickerModal - funciona no web e mobile! */}
               <DatePickerModal
                 locale="pt"
                 mode="single"
@@ -307,13 +321,14 @@ export default function CreateMood() {
                 date={date}
                 onConfirm={(params) => {
                   setOpenDatePicker(false);
+
                   if (params.date) {
                     setDate(params.date);
                   }
                 }}
                 validRange={{
-                  startDate: new Date(2020, 0, 1),
-                  endDate: new Date(2030, 11, 31),
+                  startDate: ontem,
+                  endDate: hoje,
                 }}
                 animationType="fade"
                 label="Selecione uma data"
@@ -354,6 +369,7 @@ export default function CreateMood() {
               )}
 
               <Text style={s.label}>Observação (opcional)</Text>
+
               <TextInput
                 value={note}
                 onChangeText={setNote}
@@ -388,7 +404,7 @@ export default function CreateMood() {
 
           {showSavedToast && (
             <View style={s.toast}>
-              <Text style={s.toastText}>Emoção salva com sucesso</Text>
+              <Text style={s.toastText}>Seu registro foi salvo 💙</Text>
             </View>
           )}
 
