@@ -1,7 +1,32 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from "react-native";
+
+import * as Notifications from "expo-notifications";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  } as any),
+});
+
+const mensagens = [
+  "Respire um pouco. Você não precisa resolver tudo agora.",
+  "Você está fazendo o melhor que consegue 💙",
+  "Pequenos passos também são progresso 🌱",
+  "Seu sentimento importa e merece atenção.",
+  "Tente descansar um pouco hoje 🌙",
+  "Nem todo dia precisa ser produtivo.",
+];
 
 export default function Notificacoes() {
   const [lembreteHumor, setLembreteHumor] = useState(true);
@@ -10,24 +35,107 @@ export default function Notificacoes() {
 
   useEffect(() => {
     async function carregarPreferencias() {
-      const lembrete = await AsyncStorage.getItem("notif_lembrete_humor");
-      const resumo = await AsyncStorage.getItem("notif_resumo_semanal");
-      const apoio = await AsyncStorage.getItem("notif_mensagens_apoio");
+      const lembrete = await AsyncStorage.getItem(
+        "notif_lembrete_humor"
+      );
 
-      if (lembrete !== null) setLembreteHumor(lembrete === "true");
-      if (resumo !== null) setResumoSemanal(resumo === "true");
-      if (apoio !== null) setMensagensApoio(apoio === "true");
+      const resumo = await AsyncStorage.getItem(
+        "notif_resumo_semanal"
+      );
+
+      const apoio = await AsyncStorage.getItem(
+        "notif_mensagens_apoio"
+      );
+
+      if (lembrete !== null)
+        setLembreteHumor(lembrete === "true");
+
+      if (resumo !== null)
+        setResumoSemanal(resumo === "true");
+
+      if (apoio !== null)
+        setMensagensApoio(apoio === "true");
     }
 
     carregarPreferencias();
   }, []);
 
   async function salvarAlteracoes() {
-    await AsyncStorage.setItem("notif_lembrete_humor", String(lembreteHumor));
-    await AsyncStorage.setItem("notif_resumo_semanal", String(resumoSemanal));
-    await AsyncStorage.setItem("notif_mensagens_apoio", String(mensagensApoio));
+    const { status } =
+      await Notifications.requestPermissionsAsync();
 
-    alert("Preferências salvas 💜");
+    if (status !== "granted") {
+      alert("Permissão de notificação negada.");
+      return;
+    }
+
+    await Notifications.cancelAllScheduledNotificationsAsync();
+
+    const agora = Date.now();
+
+    // Lembrete de humor
+    if (lembreteHumor) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "MoodUp 💙",
+          body: "Como você está se sentindo hoje?",
+        },
+
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: new Date(agora + 5000),
+        } as any,
+      });
+    }
+
+    // Resumo semanal
+    if (resumoSemanal) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "MoodUp 📊",
+          body: "Veja como foi sua semana emocional no MoodUp.",
+        },
+
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: new Date(agora + 10000),
+        } as any,
+      });
+    }
+
+    // Mensagens de apoio
+    if (mensagensApoio) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "MoodUp 🌿",
+          body: mensagens[
+            Math.floor(Math.random() * mensagens.length)
+          ],
+        },
+
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: new Date(agora + 15000),
+        } as any,
+      });
+    }
+
+    await AsyncStorage.setItem(
+      "notif_lembrete_humor",
+      String(lembreteHumor)
+    );
+
+    await AsyncStorage.setItem(
+      "notif_resumo_semanal",
+      String(resumoSemanal)
+    );
+
+    await AsyncStorage.setItem(
+      "notif_mensagens_apoio",
+      String(mensagensApoio)
+    );
+
+    alert("Notificações atualizadas 💜");
   }
 
   return (
@@ -62,33 +170,49 @@ export default function Notificacoes() {
         onChange={setMensagensApoio}
       />
 
-      <Pressable style={styles.button} onPress={salvarAlteracoes}>
-        <Text style={styles.buttonText}>Salvar alterações</Text>
-      </Pressable>
-
-      <View style={styles.infoBox}>
-        <Ionicons name="information-circle-outline" size={22} color="#2dd4bf" />
-        <Text style={styles.infoText}>
-          Esta área está preparada para futura integração com notificações reais do aplicativo.
+      <Pressable
+        style={styles.button}
+        onPress={salvarAlteracoes}
+      >
+        <Text style={styles.buttonText}>
+          Salvar alterações
         </Text>
-      </View>
+      </Pressable>
     </View>
   );
 }
 
-function NotificationItem({ icon, title, description, value, onChange }: any) {
+function NotificationItem({
+  icon,
+  title,
+  description,
+  value,
+  onChange,
+}: any) {
   return (
     <View style={styles.card}>
       <View style={styles.left}>
-        <Ionicons name={icon} size={24} color="#2dd4bf" />
+        <Ionicons
+          name={icon}
+          size={24}
+          color="#2dd4bf"
+        />
 
         <View style={styles.textBox}>
-          <Text style={styles.cardTitle}>{title}</Text>
-          <Text style={styles.cardDescription}>{description}</Text>
+          <Text style={styles.cardTitle}>
+            {title}
+          </Text>
+
+          <Text style={styles.cardDescription}>
+            {description}
+          </Text>
         </View>
       </View>
 
-      <Switch value={value} onValueChange={onChange} />
+      <Switch
+        value={value}
+        onValueChange={onChange}
+      />
     </View>
   );
 }
@@ -99,17 +223,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#0B0F19",
     padding: 20,
   },
+
   title: {
     color: "#E5E7EB",
     fontSize: 28,
     fontWeight: "800",
     marginBottom: 6,
   },
+
   subtitle: {
     color: "#94A3B8",
     fontSize: 15,
     marginBottom: 20,
   },
+
   card: {
     backgroundColor: "#0F172A",
     borderRadius: 16,
@@ -121,25 +248,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+
   left: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
     gap: 12,
   },
+
   textBox: {
     flex: 1,
   },
+
   cardTitle: {
     color: "#E5E7EB",
     fontSize: 16,
     fontWeight: "800",
   },
+
   cardDescription: {
     color: "#94A3B8",
     fontSize: 13,
     marginTop: 4,
   },
+
   button: {
     backgroundColor: "#2dd4bf",
     paddingVertical: 14,
@@ -147,25 +279,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 12,
   },
+
   buttonText: {
     color: "#08101A",
     fontSize: 16,
     fontWeight: "900",
-  },
-  infoBox: {
-    marginTop: 16,
-    backgroundColor: "rgba(45,212,191,.08)",
-    borderColor: "rgba(45,212,191,.25)",
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 14,
-    flexDirection: "row",
-    gap: 10,
-  },
-  infoText: {
-    color: "#CBD5E1",
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
   },
 });
