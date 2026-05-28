@@ -18,15 +18,19 @@ import {
 import { BarChart } from "react-native-chart-kit";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { useFocusEffect } from "expo-router";
+import { router } from "expo-router";
 
 const screenWidth = Dimensions.get("window").width;
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(false);
 
   const [weekly, setWeekly] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [insights, setInsights] = useState<any>(null);
+  const [topTriggers, setTopTriggers] = useState<any[]>([]);
+  const [statsOverview, setStatsOverview] = useState<any>(null);
 
   const [showHistory, setShowHistory] = useState(false);
   const [period, setPeriod] = useState<"7d" | "30d" | "all">("7d");
@@ -39,72 +43,21 @@ export default function Dashboard() {
     try {
       setLoading(true);
 
-      console.log("🚀 Iniciando loadData...");
-
       const [weeklyResponse, historyResponse, insightsResponse] = await Promise.all([
         moodApi.getWeeklySummary(),
         moodApi.getAll(),
         moodApi.getWeeklyInsights(),
       ]);
 
-      // ============================================
-      // 🔥 LOGS DE DEBUG - HISTORY 🔥
-      // ============================================
-      console.log("========== DEBUG HISTORY RESPONSE ==========");
-      console.log("1. Tipo do response:", typeof historyResponse);
-      console.log("2. historyResponse.data:", historyResponse.data);
-      console.log("3. JSON completo:", JSON.stringify(historyResponse.data, null, 2));
-      console.log("4. É array?", Array.isArray(historyResponse.data));
-      console.log("5. Tem propriedade 'data'?", historyResponse.data?.data);
-      console.log("6. Tipo do data.data:", typeof historyResponse.data?.data);
-      console.log("7. É array o data.data?", Array.isArray(historyResponse.data?.data));
-      if (historyResponse.data?.data) {
-        console.log("8. Quantidade em data.data:", historyResponse.data.data.length);
-      }
-      console.log("9. Todas as chaves do objeto:", Object.keys(historyResponse.data || {}));
-      console.log("============================================");
-
-      // ============================================
-      // 🔥 LOGS DE DEBUG - WEEKLY 🔥
-      // ============================================
-      console.log("========== DEBUG WEEKLY RESPONSE ==========");
-      console.log("weeklyResponse.data:", weeklyResponse.data);
-      console.log("============================================");
-
-      // ============================================
-      // 🔥 LOGS DE DEBUG - INSIGHTS 🔥
-      // ============================================
-      console.log("========== DEBUG INSIGHTS RESPONSE ==========");
-      console.log("insightsResponse.data:", insightsResponse.data);
-      console.log("============================================");
-
       setWeekly(weeklyResponse.data || null);
 
-      // Tentativa de extrair os dados corretamente
       let historyData = [];
-      
       if (historyResponse.data?.data && Array.isArray(historyResponse.data.data)) {
-        console.log("✅ CASO 1: Pegando historyResponse.data.data");
         historyData = historyResponse.data.data;
-      } 
-      else if (Array.isArray(historyResponse.data)) {
-        console.log("✅ CASO 2: Pegando historyResponse.data (array direto)");
+      } else if (Array.isArray(historyResponse.data)) {
         historyData = historyResponse.data;
-      }
-      else if (historyResponse.data?.data?.data && Array.isArray(historyResponse.data.data.data)) {
-        console.log("✅ CASO 3: Pegando historyResponse.data.data.data (aninhado)");
-        historyData = historyResponse.data.data.data;
-      }
-      else {
-        console.log("❌ NENHUM FORMATO RECONHECIDO!");
-        console.log("📦 Conteúdo bruto recebido:", historyResponse.data);
+      } else {
         historyData = [];
-      }
-      
-      console.log(`📊 TOTAL DE REGISTROS EXTRAÍDOS: ${historyData.length}`);
-      
-      if (historyData.length > 0) {
-        console.log("📝 Primeiro registro:", JSON.stringify(historyData[0], null, 2));
       }
       
       setHistory(historyData);
@@ -112,17 +65,33 @@ export default function Dashboard() {
       
     } catch (error: any) {
       console.log("❌ ERRO DASH:", error?.response?.data || error.message);
-      console.log("❌ Status do erro:", error?.response?.status);
-      console.log("❌ Headers:", error?.response?.headers);
       Alert.alert("Erro", "Não foi possível carregar os dados");
     } finally {
       setLoading(false);
     }
   }
 
+  async function loadStatistics() {
+    try {
+      setLoadingStats(true);
+      const [triggersRes, statsRes] = await Promise.all([
+        moodApi.getTopTriggers?.(30, 5) || Promise.resolve({ data: { triggers: [] } }),
+        moodApi.getStatsOverview?.(30) || Promise.resolve({ data: null })
+      ]);
+      
+      setTopTriggers(triggersRes.data?.triggers || []);
+      setStatsOverview(statsRes.data);
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  }
+
   useFocusEffect(
     useCallback(() => {
       loadData();
+      loadStatistics();
     }, [])
   );
 
@@ -250,7 +219,7 @@ export default function Dashboard() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <Text style={styles.title}>Dashboard emocional</Text>
 
       {/* 🔘 filtro */}
@@ -320,6 +289,64 @@ export default function Dashboard() {
         </View>
       </Animated.View>
 
+      {/* 📊 Seção de Estatísticas e Gatilhos */}
+      <Animated.View entering={FadeInUp.delay(250)}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>📊 Seus hábitos</Text>
+          
+          {loadingStats ? (
+            <ActivityIndicator color="#2dd4bf" style={{ marginVertical: 20 }} />
+          ) : (
+            <>
+              {/* Gatilhos mais usados */}
+              {topTriggers.length > 0 && (
+                <View style={styles.statsSection}>
+                  <Text style={styles.statsSubtitle}>🎯 Gatilhos mais frequentes</Text>
+                  {topTriggers.map((trigger, idx) => (
+                    <View key={trigger.id} style={styles.statItem}>
+                      <View style={styles.statHeader}>
+                        <Text style={styles.statRank}>{idx + 1}º</Text>
+                        <Text style={styles.statName}>{trigger.name}</Text>
+                        <Text style={styles.statValue}>{trigger.total}x</Text>
+                      </View>
+                      <View style={styles.progressBar}>
+                        <View 
+                          style={[
+                            styles.progressFill, 
+                            { width: `${(trigger.total / topTriggers[0]?.total) * 100}%` }
+                          ]} 
+                        />
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+              
+              {/* Resumo rápido */}
+              {statsOverview && (
+                <View style={styles.statsSection}>
+                  <Text style={styles.statsSubtitle}>📈 Resumo do período</Text>
+                  <View style={styles.summaryGrid}>
+                    <View style={styles.summaryItem}>
+                      <Text style={styles.summaryValue}>{statsOverview.total_entries || 0}</Text>
+                      <Text style={styles.summaryLabel}>Registros</Text>
+                    </View>
+                    <View style={styles.summaryItem}>
+                      <Text style={styles.summaryValue}>{statsOverview.average_level || '-'}</Text>
+                      <Text style={styles.summaryLabel}>Média</Text>
+                    </View>
+                    <View style={styles.summaryItem}>
+                      <Text style={styles.summaryValue}>{statsOverview.days_with_entries || 0}</Text>
+                      <Text style={styles.summaryLabel}>Dias ativos</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+            </>
+          )}
+        </View>
+      </Animated.View>
+
       {/* 📅 calendário */}
       <Animated.View entering={FadeInUp.delay(300)}>
         <View style={styles.card}>
@@ -328,10 +355,22 @@ export default function Dashboard() {
         </View>
       </Animated.View>
 
-      {/* 📋 histórico */}
-      <TouchableOpacity style={styles.button} onPress={() => setShowHistory(true)}>
-        <Text style={styles.buttonText}>Ver histórico</Text>
-      </TouchableOpacity>
+      {/* 📋 Botões de ação - lado a lado */}
+      <View style={styles.buttonRow}>
+        <TouchableOpacity 
+          style={[styles.button, styles.buttonHistory]} 
+          onPress={() => setShowHistory(true)}
+        >
+          <Text style={styles.buttonText}>📋 Histórico</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.button, styles.buttonReports]} 
+          onPress={() => router.push('/relatorios')}
+        >
+          <Text style={styles.buttonReportsText}>📊 Relatórios</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* 📦 Modal de histórico com edição e exclusão */}
       <Modal visible={showHistory} animationType="slide">
@@ -401,6 +440,7 @@ export default function Dashboard() {
         }}
         onSave={() => {
           loadData();
+          loadStatistics();
         }}
       />
     </ScrollView>
@@ -411,7 +451,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#060912",
-    padding: 16,
+    padding: 8,
   },
   center: {
     flex: 1,
@@ -449,7 +489,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(92, 87, 87, 0.04)",
     alignItems: "center",
   },
   metricValue: {
@@ -469,7 +509,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     padding: 16,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: "rgba(96, 90, 100, 0.03)",
   },
   cardTitle: {
     color: "#2dd4bf",
@@ -489,15 +529,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
-  button: {
+  buttonRow: {
+    flexDirection: "row",
+    gap: 12,
     marginTop: 16,
+  },
+  button: {
+    flex: 1,
     padding: 14,
     borderRadius: 14,
-    backgroundColor: "#2dd4bf",
     alignItems: "center",
+  },
+  buttonHistory: {
+    backgroundColor: "#2dd4bf",
+  },
+  buttonReports: {
+    backgroundColor: "rgba(45,212,191,0.1)",
+    borderWidth: 1,
+    borderColor: "#2dd4bf",
   },
   buttonText: {
     color: "#02120F",
+    fontWeight: "800",
+  },
+  buttonReportsText: {
+    color: "#2dd4bf",
     fontWeight: "800",
   },
   modalContainer: {
@@ -539,5 +595,76 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: "#a03333",
     alignItems: "center",
+  },
+  // Estilos para estatísticas
+  statsSection: {
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+  },
+  statsSubtitle: {
+    color: '#94A3B8',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  statItem: {
+    marginBottom: 12,
+  },
+  statHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  statRank: {
+    color: '#2dd4bf',
+    fontSize: 14,
+    fontWeight: 'bold',
+    width: 35,
+  },
+  statName: {
+    color: '#CBD5E1',
+    fontSize: 14,
+    flex: 1,
+  },
+  statValue: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 2,
+    marginLeft: 35,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#2dd4bf',
+    borderRadius: 2,
+  },
+  summaryGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  summaryItem: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+  },
+  summaryValue: {
+    color: '#2dd4bf',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  summaryLabel: {
+    color: '#94A3B8',
+    fontSize: 12,
+    marginTop: 4,
   },
 });
