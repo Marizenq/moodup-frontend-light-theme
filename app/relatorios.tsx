@@ -6,10 +6,10 @@ import {
     StyleSheet,
     ActivityIndicator,
     TouchableOpacity,
+    Alert,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { moodApi } from '@/services/api';
-import { BarChart, LineChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
 
 const screenWidth = Dimensions.get('window').width;
@@ -23,20 +23,40 @@ export default function Reports() {
     const loadReports = async () => {
         try {
             setLoading(true);
-            const [triggersRes, statsRes] = await Promise.all([
-                moodApi.getTopTriggers(period),
-                moodApi.getStatsOverview(period),
-            ]);
-            setTopTriggers(triggersRes.data?.triggers || []);
-            setStatsOverview(statsRes.data);
-        } catch (error) {
-            console.error('Erro:', error);
+            
+            let triggersData = [];
+            let statsData = null;
+            
+            if (moodApi.getTopTriggers) {
+                const triggersRes = await moodApi.getTopTriggers(period);
+                triggersData = triggersRes.data?.triggers || [];
+            }
+            
+            if (moodApi.getStatsOverview) {
+                const statsRes = await moodApi.getStatsOverview(period);
+                statsData = statsRes.data;
+                console.log('📊 Stats recebidos:', JSON.stringify(statsData, null, 2));
+            }
+            
+            setTopTriggers(triggersData);
+            setStatsOverview(statsData);
+            
+        } catch (error: any) {
+            console.error('Erro ao carregar relatórios:', error);
+            Alert.alert(
+                'Erro',
+                error?.response?.data?.message || 'Não foi possível carregar os relatórios'
+            );
         } finally {
             setLoading(false);
         }
     };
 
-    useFocusEffect(useCallback(() => { loadReports(); }, [period]));
+    useFocusEffect(
+        useCallback(() => {
+            loadReports();
+        }, [period])
+    );
 
     if (loading) {
         return (
@@ -66,16 +86,20 @@ export default function Reports() {
             {/* Top Gatilhos */}
             <View style={styles.card}>
                 <Text style={styles.cardTitle}>🎯 Gatilhos mais frequentes</Text>
-                {topTriggers.map((trigger, idx) => (
-                    <View key={trigger.id} style={styles.triggerItem}>
-                        <Text style={styles.triggerRank}>{idx + 1}</Text>
-                        <Text style={styles.triggerName}>{trigger.name}</Text>
-                        <Text style={styles.triggerCount}>{trigger.total}x</Text>
-                    </View>
-                ))}
+                {topTriggers.length > 0 ? (
+                    topTriggers.map((trigger, idx) => (
+                        <View key={trigger.id || idx} style={styles.triggerItem}>
+                            <Text style={styles.triggerRank}>{idx + 1}º</Text>
+                            <Text style={styles.triggerName}>{trigger.name}</Text>
+                            <Text style={styles.triggerCount}>{trigger.total}x</Text>
+                        </View>
+                    ))
+                ) : (
+                    <Text style={styles.emptyText}>Nenhum gatilho registrado neste período</Text>
+                )}
             </View>
             
-            {/* Estatísticas gerais */}
+            {/* Estatísticas gerais - sem média */}
             <View style={styles.card}>
                 <Text style={styles.cardTitle}>📈 Visão geral</Text>
                 <View style={styles.statsGrid}>
@@ -84,12 +108,8 @@ export default function Reports() {
                         <Text style={styles.statLabel}>registros</Text>
                     </View>
                     <View style={styles.statBox}>
-                        <Text style={styles.statBig}>{statsOverview?.average_level || '-'}</Text>
-                        <Text style={styles.statLabel}>média</Text>
-                    </View>
-                    <View style={styles.statBox}>
                         <Text style={styles.statBig}>{statsOverview?.days_with_entries || 0}</Text>
-                        <Text style={styles.statLabel}>dias</Text>
+                        <Text style={styles.statLabel}>dias ativos</Text>
                     </View>
                 </View>
             </View>
@@ -155,7 +175,7 @@ const styles = StyleSheet.create({
         color: '#2dd4bf',
         fontSize: 16,
         fontWeight: 'bold',
-        width: 35,
+        width: 40,
     },
     triggerName: {
         color: '#CBD5E1',
@@ -166,6 +186,12 @@ const styles = StyleSheet.create({
         color: '#94A3B8',
         fontSize: 14,
         fontWeight: 'bold',
+    },
+    emptyText: {
+        color: '#94A3B8',
+        fontSize: 14,
+        textAlign: 'center',
+        paddingVertical: 20,
     },
     statsGrid: {
         flexDirection: 'row',

@@ -24,18 +24,11 @@ const screenWidth = Dimensions.get("window").width;
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
-  const [loadingStats, setLoadingStats] = useState(false);
-
-  const [weekly, setWeekly] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
-  const [insights, setInsights] = useState<any>(null);
-  const [topTriggers, setTopTriggers] = useState<any[]>([]);
-  const [statsOverview, setStatsOverview] = useState<any>(null);
 
   const [showHistory, setShowHistory] = useState(false);
   const [period, setPeriod] = useState<"7d" | "30d" | "all">("7d");
   
-  // Estados para edição
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedMood, setSelectedMood] = useState<any>(null);
 
@@ -43,13 +36,7 @@ export default function Dashboard() {
     try {
       setLoading(true);
 
-      const [weeklyResponse, historyResponse, insightsResponse] = await Promise.all([
-        moodApi.getWeeklySummary(),
-        moodApi.getAll(),
-        moodApi.getWeeklyInsights(),
-      ]);
-
-      setWeekly(weeklyResponse.data || null);
+      const historyResponse = await moodApi.getAll();
 
       let historyData = [];
       if (historyResponse.data?.data && Array.isArray(historyResponse.data.data)) {
@@ -61,7 +48,6 @@ export default function Dashboard() {
       }
       
       setHistory(historyData);
-      setInsights(insightsResponse.data || null);
       
     } catch (error: any) {
       console.log("❌ ERRO DASH:", error?.response?.data || error.message);
@@ -71,27 +57,9 @@ export default function Dashboard() {
     }
   }
 
-  async function loadStatistics() {
-    try {
-      setLoadingStats(true);
-      const [triggersRes, statsRes] = await Promise.all([
-        moodApi.getTopTriggers?.(30, 5) || Promise.resolve({ data: { triggers: [] } }),
-        moodApi.getStatsOverview?.(30) || Promise.resolve({ data: null })
-      ]);
-      
-      setTopTriggers(triggersRes.data?.triggers || []);
-      setStatsOverview(statsRes.data);
-    } catch (error) {
-      console.error('Erro ao carregar estatísticas:', error);
-    } finally {
-      setLoadingStats(false);
-    }
-  }
-
   useFocusEffect(
     useCallback(() => {
       loadData();
-      loadStatistics();
     }, [])
   );
 
@@ -139,7 +107,7 @@ export default function Dashboard() {
 
   const streak = calculateStreak(history);
 
-  // 📊 estatísticas
+  // 📊 estatísticas para o gráfico
   const moodStats = useMemo(() => {
     let good = 0;
     let neutral = 0;
@@ -173,7 +141,6 @@ export default function Dashboard() {
     return "⚖️ Sua semana foi equilibrada.";
   }, [moodStats]);
 
-  // 🗑️ Deletar mood
   const handleDelete = (id: number) => {
     Alert.alert(
       "Confirmar exclusão",
@@ -198,13 +165,11 @@ export default function Dashboard() {
     );
   };
 
-  // ✏️ Editar mood
   const handleEdit = (mood: any) => {
     setSelectedMood(mood);
     setEditModalVisible(true);
   };
 
-  // Formatar data
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("pt-BR");
@@ -237,7 +202,7 @@ export default function Dashboard() {
         ))}
       </View>
 
-      {/* 🔥 métricas */}
+      {/* 🔥 métricas - apenas Registros e Streak */}
       <View style={styles.row}>
         <Animated.View entering={FadeInUp}>
           <View style={styles.metricCard}>
@@ -289,64 +254,6 @@ export default function Dashboard() {
         </View>
       </Animated.View>
 
-      {/* 📊 Seção de Estatísticas e Gatilhos */}
-      <Animated.View entering={FadeInUp.delay(250)}>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>📊 Seus hábitos</Text>
-          
-          {loadingStats ? (
-            <ActivityIndicator color="#2dd4bf" style={{ marginVertical: 20 }} />
-          ) : (
-            <>
-              {/* Gatilhos mais usados */}
-              {topTriggers.length > 0 && (
-                <View style={styles.statsSection}>
-                  <Text style={styles.statsSubtitle}>🎯 Gatilhos mais frequentes</Text>
-                  {topTriggers.map((trigger, idx) => (
-                    <View key={trigger.id} style={styles.statItem}>
-                      <View style={styles.statHeader}>
-                        <Text style={styles.statRank}>{idx + 1}º</Text>
-                        <Text style={styles.statName}>{trigger.name}</Text>
-                        <Text style={styles.statValue}>{trigger.total}x</Text>
-                      </View>
-                      <View style={styles.progressBar}>
-                        <View 
-                          style={[
-                            styles.progressFill, 
-                            { width: `${(trigger.total / topTriggers[0]?.total) * 100}%` }
-                          ]} 
-                        />
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              )}
-              
-              {/* Resumo rápido */}
-              {statsOverview && (
-                <View style={styles.statsSection}>
-                  <Text style={styles.statsSubtitle}>📈 Resumo do período</Text>
-                  <View style={styles.summaryGrid}>
-                    <View style={styles.summaryItem}>
-                      <Text style={styles.summaryValue}>{statsOverview.total_entries || 0}</Text>
-                      <Text style={styles.summaryLabel}>Registros</Text>
-                    </View>
-                    <View style={styles.summaryItem}>
-                      <Text style={styles.summaryValue}>{statsOverview.average_level || '-'}</Text>
-                      <Text style={styles.summaryLabel}>Média</Text>
-                    </View>
-                    <View style={styles.summaryItem}>
-                      <Text style={styles.summaryValue}>{statsOverview.days_with_entries || 0}</Text>
-                      <Text style={styles.summaryLabel}>Dias ativos</Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-            </>
-          )}
-        </View>
-      </Animated.View>
-
       {/* 📅 calendário */}
       <Animated.View entering={FadeInUp.delay(300)}>
         <View style={styles.card}>
@@ -372,7 +279,7 @@ export default function Dashboard() {
         </TouchableOpacity>
       </View>
 
-      {/* 📦 Modal de histórico com edição e exclusão */}
+      {/* 📦 Modal de histórico */}
       <Modal visible={showHistory} animationType="slide">
         <View style={styles.modalContainer}>
           <Text style={styles.title}>Histórico completo</Text>
@@ -440,7 +347,6 @@ export default function Dashboard() {
         }}
         onSave={() => {
           loadData();
-          loadStatistics();
         }}
       />
     </ScrollView>
@@ -451,7 +357,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#060912",
-    padding: 8,
+    padding: 12,
   },
   center: {
     flex: 1,
@@ -489,7 +395,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     borderRadius: 18,
-    backgroundColor: "rgba(92, 87, 87, 0.04)",
+    backgroundColor: "rgba(255,255,255,0.04)",
     alignItems: "center",
   },
   metricValue: {
@@ -509,7 +415,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     padding: 16,
     borderRadius: 20,
-    backgroundColor: "rgba(96, 90, 100, 0.03)",
+    backgroundColor: "rgba(255,255,255,0.03)",
   },
   cardTitle: {
     color: "#2dd4bf",
@@ -595,76 +501,5 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: "#a03333",
     alignItems: "center",
-  },
-  // Estilos para estatísticas
-  statsSection: {
-    marginTop: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
-  },
-  statsSubtitle: {
-    color: '#94A3B8',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  statItem: {
-    marginBottom: 12,
-  },
-  statHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  statRank: {
-    color: '#2dd4bf',
-    fontSize: 14,
-    fontWeight: 'bold',
-    width: 35,
-  },
-  statName: {
-    color: '#CBD5E1',
-    fontSize: 14,
-    flex: 1,
-  },
-  statValue: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 2,
-    marginLeft: 35,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#2dd4bf',
-    borderRadius: 2,
-  },
-  summaryGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  summaryItem: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
-  },
-  summaryValue: {
-    color: '#2dd4bf',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  summaryLabel: {
-    color: '#94A3B8',
-    fontSize: 12,
-    marginTop: 4,
   },
 });
