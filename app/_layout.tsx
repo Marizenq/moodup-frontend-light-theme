@@ -3,8 +3,17 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { ThemePreferenceProvider } from "@/theme/theme-preference";
 
 export default function RootLayout() {
+  return (
+    <ThemePreferenceProvider>
+      <RootLayoutWithTheme />
+    </ThemePreferenceProvider>
+  );
+}
+
+function RootLayoutWithTheme() {
   const colorScheme = useColorScheme();
 
   return (
