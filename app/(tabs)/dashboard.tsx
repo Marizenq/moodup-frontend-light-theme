@@ -18,20 +18,17 @@ import {
 import { BarChart } from "react-native-chart-kit";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { useFocusEffect } from "expo-router";
+import { router } from "expo-router";
 
 const screenWidth = Dimensions.get("window").width;
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
-
-  const [weekly, setWeekly] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
-  const [insights, setInsights] = useState<any>(null);
 
   const [showHistory, setShowHistory] = useState(false);
   const [period, setPeriod] = useState<"7d" | "30d" | "all">("7d");
   
-  // Estados para edição
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedMood, setSelectedMood] = useState<any>(null);
 
@@ -39,81 +36,21 @@ export default function Dashboard() {
     try {
       setLoading(true);
 
-      console.log("🚀 Iniciando loadData...");
+      const historyResponse = await moodApi.getAll();
 
-      const [weeklyResponse, historyResponse, insightsResponse] = await Promise.all([
-        moodApi.getWeeklySummary(),
-        moodApi.getAll(),
-        moodApi.getWeeklyInsights(),
-      ]);
-
-      // ============================================
-      // 🔥 LOGS DE DEBUG - HISTORY 🔥
-      // ============================================
-      console.log("========== DEBUG HISTORY RESPONSE ==========");
-      console.log("1. Tipo do response:", typeof historyResponse);
-      console.log("2. historyResponse.data:", historyResponse.data);
-      console.log("3. JSON completo:", JSON.stringify(historyResponse.data, null, 2));
-      console.log("4. É array?", Array.isArray(historyResponse.data));
-      console.log("5. Tem propriedade 'data'?", historyResponse.data?.data);
-      console.log("6. Tipo do data.data:", typeof historyResponse.data?.data);
-      console.log("7. É array o data.data?", Array.isArray(historyResponse.data?.data));
-      if (historyResponse.data?.data) {
-        console.log("8. Quantidade em data.data:", historyResponse.data.data.length);
-      }
-      console.log("9. Todas as chaves do objeto:", Object.keys(historyResponse.data || {}));
-      console.log("============================================");
-
-      // ============================================
-      // 🔥 LOGS DE DEBUG - WEEKLY 🔥
-      // ============================================
-      console.log("========== DEBUG WEEKLY RESPONSE ==========");
-      console.log("weeklyResponse.data:", weeklyResponse.data);
-      console.log("============================================");
-
-      // ============================================
-      // 🔥 LOGS DE DEBUG - INSIGHTS 🔥
-      // ============================================
-      console.log("========== DEBUG INSIGHTS RESPONSE ==========");
-      console.log("insightsResponse.data:", insightsResponse.data);
-      console.log("============================================");
-
-      setWeekly(weeklyResponse.data || null);
-
-      // Tentativa de extrair os dados corretamente
       let historyData = [];
-      
       if (historyResponse.data?.data && Array.isArray(historyResponse.data.data)) {
-        console.log("✅ CASO 1: Pegando historyResponse.data.data");
         historyData = historyResponse.data.data;
-      } 
-      else if (Array.isArray(historyResponse.data)) {
-        console.log("✅ CASO 2: Pegando historyResponse.data (array direto)");
+      } else if (Array.isArray(historyResponse.data)) {
         historyData = historyResponse.data;
-      }
-      else if (historyResponse.data?.data?.data && Array.isArray(historyResponse.data.data.data)) {
-        console.log("✅ CASO 3: Pegando historyResponse.data.data.data (aninhado)");
-        historyData = historyResponse.data.data.data;
-      }
-      else {
-        console.log("❌ NENHUM FORMATO RECONHECIDO!");
-        console.log("📦 Conteúdo bruto recebido:", historyResponse.data);
+      } else {
         historyData = [];
       }
       
-      console.log(`📊 TOTAL DE REGISTROS EXTRAÍDOS: ${historyData.length}`);
-      
-      if (historyData.length > 0) {
-        console.log("📝 Primeiro registro:", JSON.stringify(historyData[0], null, 2));
-      }
-      
       setHistory(historyData);
-      setInsights(insightsResponse.data || null);
       
     } catch (error: any) {
       console.log("❌ ERRO DASH:", error?.response?.data || error.message);
-      console.log("❌ Status do erro:", error?.response?.status);
-      console.log("❌ Headers:", error?.response?.headers);
       Alert.alert("Erro", "Não foi possível carregar os dados");
     } finally {
       setLoading(false);
@@ -170,7 +107,7 @@ export default function Dashboard() {
 
   const streak = calculateStreak(history);
 
-  // 📊 estatísticas
+  // 📊 estatísticas para o gráfico
   const moodStats = useMemo(() => {
     let good = 0;
     let neutral = 0;
@@ -204,7 +141,6 @@ export default function Dashboard() {
     return "⚖️ Sua semana foi equilibrada.";
   }, [moodStats]);
 
-  // 🗑️ Deletar mood
   const handleDelete = (id: number) => {
     Alert.alert(
       "Confirmar exclusão",
@@ -229,13 +165,11 @@ export default function Dashboard() {
     );
   };
 
-  // ✏️ Editar mood
   const handleEdit = (mood: any) => {
     setSelectedMood(mood);
     setEditModalVisible(true);
   };
 
-  // Formatar data
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("pt-BR");
@@ -250,7 +184,7 @@ export default function Dashboard() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <Text style={styles.title}>Dashboard emocional</Text>
 
       {/* 🔘 filtro */}
@@ -268,7 +202,7 @@ export default function Dashboard() {
         ))}
       </View>
 
-      {/* 🔥 métricas */}
+      {/* 🔥 métricas - apenas Registros e Streak */}
       <View style={styles.row}>
         <Animated.View entering={FadeInUp}>
           <View style={styles.metricCard}>
@@ -328,12 +262,24 @@ export default function Dashboard() {
         </View>
       </Animated.View>
 
-      {/* 📋 histórico */}
-      <TouchableOpacity style={styles.button} onPress={() => setShowHistory(true)}>
-        <Text style={styles.buttonText}>Ver histórico</Text>
-      </TouchableOpacity>
+      {/* 📋 Botões de ação - lado a lado */}
+      <View style={styles.buttonRow}>
+        <TouchableOpacity 
+          style={[styles.button, styles.buttonHistory]} 
+          onPress={() => setShowHistory(true)}
+        >
+          <Text style={styles.buttonText}>📋 Histórico</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.button, styles.buttonReports]} 
+          onPress={() => router.push('/relatorios')}
+        >
+          <Text style={styles.buttonReportsText}>📊 Relatórios</Text>
+        </TouchableOpacity>
+      </View>
 
-      {/* 📦 Modal de histórico com edição e exclusão */}
+      {/* 📦 Modal de histórico */}
       <Modal visible={showHistory} animationType="slide">
         <View style={styles.modalContainer}>
           <Text style={styles.title}>Histórico completo</Text>
@@ -411,7 +357,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#060912",
-    padding: 16,
+    padding: 12,
   },
   center: {
     flex: 1,
@@ -489,15 +435,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
-  button: {
+  buttonRow: {
+    flexDirection: "row",
+    gap: 12,
     marginTop: 16,
+  },
+  button: {
+    flex: 1,
     padding: 14,
     borderRadius: 14,
-    backgroundColor: "#2dd4bf",
     alignItems: "center",
+  },
+  buttonHistory: {
+    backgroundColor: "#2dd4bf",
+  },
+  buttonReports: {
+    backgroundColor: "rgba(45,212,191,0.1)",
+    borderWidth: 1,
+    borderColor: "#2dd4bf",
   },
   buttonText: {
     color: "#02120F",
+    fontWeight: "800",
+  },
+  buttonReportsText: {
+    color: "#2dd4bf",
     fontWeight: "800",
   },
   modalContainer: {

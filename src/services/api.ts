@@ -38,6 +38,16 @@ export const moodApi = {
   
   // 🔥 ADICIONADO: Insights semanais
   getWeeklyInsights: () => api.get("/moods/insights/weekly"),
+
+   // 🔥 ADICIONAR ESTES MÉTODOS:
+  getTopTriggers: (days: number = 30, limit: number = 5) => 
+    api.get(`/stats/top-triggers?days=${days}&limit=${limit}`),
+  
+  getStatsOverview: (days: number = 30) => 
+    api.get(`/stats/overview?days=${days}`),
+  
+  getTopResources: (days: number = 30, limit: number = 5) => 
+    api.get(`/stats/top-resources?days=${days}&limit=${limit}`),
 };
 
 export default api;

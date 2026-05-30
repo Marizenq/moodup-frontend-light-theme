@@ -26,6 +26,9 @@ function RootLayoutWithTheme() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
 
+        {/* Telas individuais */}
+        <Stack.Screen name="relatorios" options={{ title: 'Relatórios', headerShown: true }} />
+
         {/* Modal */}
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
       </Stack>
