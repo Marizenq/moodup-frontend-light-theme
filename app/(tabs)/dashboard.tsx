@@ -1,8 +1,8 @@
 import MoodCalendar from "@/components/MoodCalendar";
 import EditMoodModal from "@/components/EditMoodModal";
-import { moodApi } from "@/services/api";
+import { moodApi, api } from "@/services/api";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -25,6 +25,7 @@ const screenWidth = Dimensions.get("window").width;
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState<any[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [showHistory, setShowHistory] = useState(false);
   const [period, setPeriod] = useState<"7d" | "30d" | "all">("7d");
@@ -34,8 +35,6 @@ export default function Dashboard() {
 
   async function loadData() {
     try {
-      setLoading(true);
-
       const historyResponse = await moodApi.getAll();
 
       let historyData = [];
@@ -48,18 +47,31 @@ export default function Dashboard() {
       }
       
       setHistory(historyData);
-      
     } catch (error: any) {
       console.log("❌ ERRO DASH:", error?.response?.data || error.message);
       Alert.alert("Erro", "Não foi possível carregar os dados");
-    } finally {
-      setLoading(false);
     }
   }
 
+  const checkAdminStatus = async () => {
+    try {
+      const response = await api.get('/me');
+      setIsAdmin(response.data?.user?.role === 'admin');
+    } catch (error: any) {
+      console.error('❌ Erro ao verificar admin:', error?.response?.data || error.message);
+      setIsAdmin(false);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
-      loadData();
+      // 🔥 CARREGAMENTO PARALELO - mais rápido!
+      const loadAll = async () => {
+        setLoading(true);
+        await Promise.all([loadData(), checkAdminStatus()]);
+        setLoading(false);
+      };
+      loadAll();
     }, [])
   );
 
@@ -78,14 +90,14 @@ export default function Dashboard() {
   }, [history, period]);
 
   // 🔥 streak
-  function calculateStreak(data: any[]) {
-    if (!data.length) return 0;
+  const streak = useMemo(() => {
+    if (!history.length) return 0;
     
-    const sorted = [...data].sort(
+    const sorted = [...history].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
 
-    let streak = 0;
+    let streakCount = 0;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -95,17 +107,15 @@ export default function Dashboard() {
       
       const diff = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
       
-      if (diff === streak) {
-        streak++;
+      if (diff === streakCount) {
+        streakCount++;
       } else {
         break;
       }
     }
 
-    return streak;
-  }
-
-  const streak = calculateStreak(history);
+    return streakCount;
+  }, [history]);
 
   // 📊 estatísticas para o gráfico
   const moodStats = useMemo(() => {
@@ -262,7 +272,7 @@ export default function Dashboard() {
         </View>
       </Animated.View>
 
-      {/* 📋 Botões de ação - lado a lado */}
+      {/* 📋 Botões de ação - três botões lado a lado */}
       <View style={styles.buttonRow}>
         <TouchableOpacity 
           style={[styles.button, styles.buttonHistory]} 
@@ -277,6 +287,15 @@ export default function Dashboard() {
         >
           <Text style={styles.buttonReportsText}>📊 Relatórios</Text>
         </TouchableOpacity>
+        
+        {isAdmin && (
+          <TouchableOpacity 
+            style={[styles.button, styles.buttonAdmin]} 
+            onPress={() => router.push('/auditoria')}
+          >
+            <Text style={styles.buttonAdminText}>🔒 Auditoria</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* 📦 Modal de histórico */}
@@ -439,12 +458,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     marginTop: 16,
+    marginBottom: 8,
   },
   button: {
     flex: 1,
-    padding: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     borderRadius: 14,
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 48,
   },
   buttonHistory: {
     backgroundColor: "#2dd4bf",
@@ -454,13 +477,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#2dd4bf",
   },
+  buttonAdmin: {
+    backgroundColor: "rgba(239,68,68,0.15)",
+    borderWidth: 1,
+    borderColor: "#ef4444",
+  },
   buttonText: {
     color: "#02120F",
     fontWeight: "800",
+    fontSize: 14,
   },
   buttonReportsText: {
     color: "#2dd4bf",
     fontWeight: "800",
+    fontSize: 14,
+  },
+  buttonAdminText: {
+    color: "#ef4444",
+    fontWeight: "800",
+    fontSize: 14,
   },
   modalContainer: {
     flex: 1,
