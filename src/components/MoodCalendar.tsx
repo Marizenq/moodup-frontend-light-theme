@@ -3,58 +3,65 @@ import {
   View,
   Text,
   StyleSheet,
-  Dimensions,
   TouchableOpacity,
   Modal,
   Pressable,
-  ScrollView,
+  useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-
-const { width } = Dimensions.get('window');
-const COLUMNS = 7; // 7 colunas para os dias da semana
-const DAY_SIZE = (width - 60) / COLUMNS;
 
 interface MoodCalendarProps {
   data: any[];
 }
 
 export default function MoodCalendar({ data }: MoodCalendarProps) {
+  const { width } = useWindowDimensions();
   const [selectedMood, setSelectedMood] = useState<any>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   
-  const getMoodColor = (level: number) => {
-    const colors = {
+  const getDaySize = () => {
+    if (Platform.OS === 'web') {
+      return 46;
+    }
+    return (width - 80) / 7;
+  };
+  
+  const DAY_SIZE = getDaySize();
+  const COLUMNS = 7;
+  
+  const getMoodColor = (level: number): string[] => {
+    const colors: Record<number, string[]> = {
       1: ['#ef4444', '#dc2626'],
       2: ['#f97316', '#ea580c'],
       3: ['#eab308', '#ca8a04'],
       4: ['#84cc16', '#65a30d'],
       5: ['#22c55e', '#16a34a'],
     };
-    return colors[level as keyof typeof colors] || ['#334155', '#1e293b'];
+    return colors[level] || ['#1e293b', '#0f172a'];
   };
   
-  const getMoodEmoji = (level: number) => {
-    const emojis = {
+  const getMoodEmoji = (level: number): string => {
+    const emojis: Record<number, string> = {
       1: '😞',
       2: '😕',
       3: '😐',
       4: '🙂',
       5: '😁',
     };
-    return emojis[level as keyof typeof emojis] || '📅';
+    return emojis[level] || '📅';
   };
   
-  const getMoodText = (level: number) => {
-    const texts = {
+  const getMoodText = (level: number): string => {
+    const texts: Record<number, string> = {
       1: 'Muito mal',
       2: 'Mal',
       3: 'Neutro',
       4: 'Bem',
       5: 'Ótimo',
     };
-    return texts[level as keyof typeof texts] || '';
+    return texts[level] || '';
   };
   
   const goToPreviousMonth = () => {
@@ -69,7 +76,6 @@ export default function MoodCalendar({ data }: MoodCalendarProps) {
     setCurrentDate(new Date());
   };
   
-  // Gerar dias do mês atual com correção de timezone
   const getDaysInMonth = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -78,20 +84,16 @@ export default function MoodCalendar({ data }: MoodCalendarProps) {
     
     const days = [];
     
-    // Dias vazios no início
     for (let i = 0; i < firstDayOfMonth; i++) {
       days.push(null);
     }
     
-    // Dias do mês
     for (let i = 1; i <= daysInMonth; i++) {
-      // Criar data no formato YYYY-MM-DD sem timezone
       const yearStr = year.toString();
       const monthStr = (month + 1).toString().padStart(2, '0');
       const dayStr = i.toString().padStart(2, '0');
       const dateStr = `${yearStr}-${monthStr}-${dayStr}`;
       
-      // Buscar mood comparando apenas a data (sem timezone)
       const mood = data.find(m => {
         const moodDate = m.date?.split('T')[0];
         return moodDate === dateStr;
@@ -107,7 +109,6 @@ export default function MoodCalendar({ data }: MoodCalendarProps) {
   const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   const weekDays = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
   
-  // Dividir os dias em linhas de COLUMNS colunas
   const chunkArray = (arr: any[], size: number) => {
     const chunks = [];
     for (let i = 0; i < arr.length; i += size) {
@@ -120,107 +121,88 @@ export default function MoodCalendar({ data }: MoodCalendarProps) {
   
   return (
     <View>
-      {/* Cabeçalho com navegação */}
       <View style={styles.header}>
         <TouchableOpacity onPress={goToPreviousMonth} style={styles.navButton}>
           <Ionicons name="chevron-back" size={24} color="#2dd4bf" />
         </TouchableOpacity>
-        
         <Text style={styles.monthTitle}>
           {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
         </Text>
-        
         <TouchableOpacity onPress={goToNextMonth} style={styles.navButton}>
           <Ionicons name="chevron-forward" size={24} color="#2dd4bf" />
         </TouchableOpacity>
       </View>
       
-      {/* Botão para voltar ao mês atual */}
       {currentDate.getMonth() !== new Date().getMonth() && (
         <TouchableOpacity onPress={goToCurrentMonth} style={styles.currentMonthButton}>
           <Text style={styles.currentMonthText}>⏺ Voltar para mês atual</Text>
         </TouchableOpacity>
       )}
       
-      {/* 🔥 LINHA COM OS DIAS DA SEMANA */}
       <View style={styles.weekDaysRow}>
         {weekDays.map((day, index) => (
-          <View key={index} style={styles.weekDayCell}>
+          <View key={index} style={[styles.weekDayCell, { width: DAY_SIZE }]}>
             <Text style={styles.weekDayText}>{day}</Text>
           </View>
         ))}
       </View>
       
-      {/* Calendário */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View>
-          {rows.map((row, rowIndex) => (
-            <View key={rowIndex} style={styles.calendarRow}>
-              {row.map((item, colIndex) => {
-                if (!item) {
-                  return <View key={colIndex} style={styles.emptyDay} />;
-                }
-                
-                const hasMood = !!item.mood;
-                const level = item.mood?.level;
-                const colors = level ? getMoodColor(level) : ['#1e293b', '#0f172a'];
-                
-                return (
-                  <Pressable
-                    key={colIndex}
-                    onPress={() => hasMood && setSelectedMood(item.mood)}
-                    disabled={!hasMood}
-                    style={styles.dayPressable}
-                  >
-                    <LinearGradient
-                      colors={colors}
-                      style={[styles.dayGradient, !hasMood && styles.emptyDayGradient]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                    >
-                      <Text style={[styles.dayNumber, !hasMood && styles.emptyDayText]}>
-                        {item.day}
-                      </Text>
-                      {hasMood && (
-                        <Text style={styles.dayEmoji}>
-                          {getMoodEmoji(level)}
-                        </Text>
-                      )}
-                    </LinearGradient>
-                  </Pressable>
-                );
-              })}
-              {/* Completar a linha com dias vazios se necessário */}
-              {row.length < COLUMNS && 
-                Array(COLUMNS - row.length).fill(null).map((_, idx) => (
-                  <View key={`empty-${idx}`} style={styles.emptyDay} />
-                ))
+      {/* SCROLLVIEW REMOVIDO - AGORA É UMA VIEW NORMAL */}
+      <View style={styles.calendarContainer}>
+        {rows.map((row, rowIndex) => (
+          <View key={rowIndex} style={styles.calendarRow}>
+            {row.map((item, colIndex) => {
+              if (!item) {
+                return <View key={colIndex} style={[styles.emptyDay, { width: DAY_SIZE, height: DAY_SIZE }]} />;
               }
-            </View>
-          ))}
-        </View>
-      </ScrollView>
+              
+              const hasMood = !!item.mood;
+              const level = item.mood?.level;
+              
+              return (
+                <Pressable
+                  key={colIndex}
+                  onPress={() => hasMood && setSelectedMood(item.mood)}
+                  disabled={!hasMood}
+                  style={[styles.dayPressable, { width: DAY_SIZE, height: DAY_SIZE }]}
+                >
+                  <LinearGradient
+                    colors={hasMood ? getMoodColor(level) as [string, string] : ['#1e293b', '#0f172a']}
+                    style={[
+                      styles.dayGradient,
+                      {
+                        width: DAY_SIZE - 6,
+                        height: DAY_SIZE - 6,
+                      },
+                    ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Text style={[styles.dayNumber, !hasMood && styles.emptyDayText]}>
+                      {item.day}
+                    </Text>
+                    {hasMood && (
+                      <Text style={styles.dayEmoji}>
+                        {getMoodEmoji(level)}
+                      </Text>
+                    )}
+                  </LinearGradient>
+                </Pressable>
+              );
+            })}
+          </View>
+        ))}
+      </View>
       
-      {/* Modal de detalhes do dia */}
       <Modal visible={!!selectedMood} transparent animationType="fade">
-        <Pressable 
-          style={styles.modalOverlay} 
-          onPress={() => setSelectedMood(null)}
-        >
+        <Pressable style={styles.modalOverlay} onPress={() => setSelectedMood(null)}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalEmoji}>
-                {getMoodEmoji(selectedMood?.level)}
-              </Text>
-              <TouchableOpacity 
-                style={styles.modalClose}
-                onPress={() => setSelectedMood(null)}
-              >
+              <Text style={styles.modalEmoji}>{getMoodEmoji(selectedMood?.level)}</Text>
+              <TouchableOpacity style={styles.modalClose} onPress={() => setSelectedMood(null)}>
                 <Text style={styles.modalCloseText}>✕</Text>
               </TouchableOpacity>
             </View>
-            
-            {/* Data corrigida sem timezone */}
             <Text style={styles.modalDate}>
               {selectedMood?.date ? (() => {
                 const originalDate = selectedMood.date.split('T')[0];
@@ -231,30 +213,25 @@ export default function MoodCalendar({ data }: MoodCalendarProps) {
                 return `${diasSemana[dataObj.getDay()]}, ${day} de ${meses[parseInt(month) - 1]} de ${year}`;
               })() : ''}
             </Text>
-            
             <View style={styles.modalLevelContainer}>
               <Text style={styles.modalLevelLabel}>Nível:</Text>
               <Text style={[styles.modalLevelValue, { color: selectedMood?.level ? getMoodColor(selectedMood.level)[0] : '#2dd4bf' }]}>
                 {selectedMood?.level}/5 - {getMoodText(selectedMood?.level)}
               </Text>
             </View>
-            
             {selectedMood?.note && (
               <View style={styles.modalNoteContainer}>
                 <Text style={styles.modalNoteLabel}>📝 Nota:</Text>
                 <Text style={styles.modalNote}>{selectedMood.note}</Text>
               </View>
             )}
-            
             {selectedMood?.triggers && selectedMood.triggers.length > 0 && (
               <View style={styles.modalTriggersContainer}>
                 <Text style={styles.modalTriggersLabel}>🎯 Gatilhos:</Text>
                 <View style={styles.modalTriggersList}>
                   {selectedMood.triggers.map((trigger: any, idx: number) => (
                     <View key={idx} style={styles.modalTriggerTag}>
-                      <Text style={styles.modalTriggerText}>
-                        {trigger.name || trigger}
-                      </Text>
+                      <Text style={styles.modalTriggerText}>{trigger.name || trigger}</Text>
                     </View>
                   ))}
                 </View>
@@ -297,14 +274,12 @@ const styles = StyleSheet.create({
     color: '#2dd4bf',
     fontSize: 12,
   },
-  // 🔥 ESTILOS PARA OS DIAS DA SEMANA
   weekDaysRow: {
     flexDirection: 'row',
     marginBottom: 12,
-    paddingHorizontal: 4,
+    justifyContent: 'flex-start',
   },
   weekDayCell: {
-    width: DAY_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -314,28 +289,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
+  calendarContainer: {
+    flex: 1,
+  },
   calendarRow: {
     flexDirection: 'row',
-    marginBottom: 6,
+    justifyContent: 'flex-start',
   },
   emptyDay: {
-    width: DAY_SIZE,
-    height: DAY_SIZE,
+    margin: 3,
   },
   dayPressable: {
-    width: DAY_SIZE,
-    height: DAY_SIZE,
+    margin: 3,
   },
   dayGradient: {
-    width: DAY_SIZE - 6,
-    height: DAY_SIZE - 6,
-    margin: 3,
+    margin: 0,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  emptyDayGradient: {
-    backgroundColor: 'rgba(255,255,255,0.02)',
   },
   dayNumber: {
     color: '#fff',
