@@ -1,27 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Linking,
+import {View, Text, Pressable, ScrollView, StyleSheet, Linking, Modal,
 } from "react-native";
-
 import { useLocalSearchParams } from "expo-router";
 import { api } from "@/services/api";
 import { fetchSubTriggers } from "@/services/suggestions";
 
 type Message = {
   id: string;
-
-  type:
-    | "bot"
-    | "user"
-    | "options"
-    | "suboptions"
-    | "suggestions";
-
+  type: "bot" | "user" | "options" | "suboptions" | "suggestions";
   text?: string;
   options?: any[];
   suggestions?: any[];
@@ -29,67 +15,27 @@ type Message = {
 };
 
 export default function Sugestoes() {
-  const { trigger } =
-    useLocalSearchParams();
+  const { trigger } = useLocalSearchParams();
+  const hasStarted = useRef(false);
 
-  const hasStarted =
-    useRef(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [selectedTriggers, setSelectedTriggers] = useState<string[]>([]);
+  const [remainingTriggers, setRemainingTriggers] = useState<string[]>([]);
+  const [tempSelectedTriggers, setTempSelectedTriggers] = useState<string[]>([]);
+  const [selectedSubOptionIds, setSelectedSubOptionIds] = useState<string[]>([]);
+  const [usedTriggers, setUsedTriggers] = useState<string[]>([]);
+  const [expandedSuggestions, setExpandedSuggestions] = useState<string[]>([]);
+  const [showResetModal, setShowResetModal] = useState(false);
 
-  const [messages, setMessages] =
-    useState<Message[]>([]);
-
-  const [
-    selectedTriggers,
-    setSelectedTriggers,
-  ] = useState<string[]>([]);
-
-  const [
-    remainingTriggers,
-    setRemainingTriggers,
-  ] = useState<string[]>([]);
-
-  const [
-    tempSelectedTriggers,
-    setTempSelectedTriggers,
-  ] = useState<string[]>([]);
-
-  const [
-    selectedSubOptionIds,
-    setSelectedSubOptionIds,
-  ] = useState<string[]>([]);
-
-  const [
-    usedTriggers,
-    setUsedTriggers,
-  ] = useState<string[]>([]);
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [erro, setErro] =
-    useState("");
-
-  const [
-    isChoosingTriggers,
-    setIsChoosingTriggers,
-  ] = useState(false);
-
-  const [
-    isFreeMode,
-    setIsFreeMode,
-  ] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState("");
+  const [isChoosingTriggers, setIsChoosingTriggers] = useState(false);
+  const [isFreeMode, setIsFreeMode] = useState(false);
 
   useEffect(() => {
-    if (
-      hasStarted.current &&
-      !trigger
-    )
-      return;
-
+    if (hasStarted.current && !trigger) return;
     hasStarted.current = true;
-
     setMessages([]);
-
     startConversation();
   }, [trigger]);
 
@@ -100,6 +46,7 @@ export default function Sugestoes() {
     setTempSelectedTriggers([]);
     setSelectedSubOptionIds([]);
     setUsedTriggers([]);
+    setExpandedSuggestions([]);
     setErro("");
     setIsChoosingTriggers(false);
     setIsFreeMode(true);
@@ -107,143 +54,113 @@ export default function Sugestoes() {
     setTimeout(async () => {
       try {
         setLoading(true);
+        addBotMessage("Olá 💙 Sobre o que você gostaria de conversar hoje?");
 
-        addBotMessage(
-          "Olá 💙 Sobre o que você gostaria de conversar hoje?"
-        );
-
-        const response =
-          await api.get("/triggers");
-
-        const triggers =
-          response.data.data || [];
+        const response = await api.get("/triggers");
+        const triggers = response.data.data || [];
 
         addOptions(triggers);
       } catch (error) {
         console.log(error);
-
-        setErro(
-          "Erro ao reiniciar conversa."
-        );
+        setErro("Erro ao reiniciar conversa.");
       } finally {
         setLoading(false);
       }
     }, 100);
   }
 
-  function createMessage(
-    type: Message["type"],
-    extra: any = {}
-  ) {
+  function createMessage(type: Message["type"], extra: any = {}) {
     return {
-      id:
-        Date.now().toString() +
-        Math.random(),
-
+      id: Date.now().toString() + Math.random(),
       type,
-
       ...extra,
     };
   }
 
-  function addBotMessage(
-    text: string
-  ) {
-    setMessages((prev) => [
-      ...prev,
-      createMessage("bot", {
-        text,
-      }),
-    ]);
+  function addBotMessage(text: string) {
+    setMessages((prev) => [...prev, createMessage("bot", { text })]);
   }
 
-  function addUserMessage(
-    text: string
-  ) {
-    setMessages((prev) => [
-      ...prev,
-      createMessage("user", {
-        text,
-      }),
-    ]);
+  function addUserMessage(text: string) {
+    setMessages((prev) => [...prev, createMessage("user", { text })]);
   }
 
-  function addOptions(
-    options: any[]
-  ) {
-    setMessages((prev) => [
-      ...prev,
-      createMessage("options", {
-        options,
-      }),
-    ]);
+  function addOptions(options: any[]) {
+    setMessages((prev) => [...prev, createMessage("options", { options })]);
   }
 
-  function addSubOptions(
-    options: any[]
-  ) {
-    setMessages((prev) => [
-      ...prev,
-      createMessage(
-        "suboptions",
-        {
-          options,
-        }
-      ),
-    ]);
+  function addSubOptions(options: any[]) {
+    setMessages((prev) => [...prev, createMessage("suboptions", { options })]);
   }
 
-  function addSuggestions(
-    suggestions: any[],
-    resources: any[]
-  ) {
+  function addSuggestions(suggestions: any[], resources: any[]) {
     setMessages((prev) => [
       ...prev,
-      createMessage(
-        "suggestions",
-        {
-          suggestions,
-          resources,
-        }
-      ),
+      createMessage("suggestions", { suggestions, resources }),
     ]);
   }
 
   function getEmoji(name: string) {
-    const key =
-      name.toLowerCase();
+    const key = name.toLowerCase();
 
     switch (key) {
       case "trabalho":
         return "💼";
-
       case "escola":
         return "📚";
-
       case "familia":
       case "família":
         return "👨‍👩‍👧";
-
       case "transito":
       case "trânsito":
         return "🚗";
-
       case "amizades":
         return "🧑‍🤝‍🧑";
-
       case "dinheiro":
         return "💰";
-
       case "saude":
       case "saúde":
         return "❤️";
-
       case "sono":
         return "😴";
-
       default:
         return "💬";
     }
+  }
+
+  function getSuggestionTitle(index: number) {
+    const titles = [
+      "Primeira sugestão",
+      "Segunda sugestão",
+      "Terceira sugestão",
+      "Quarta sugestão",
+    ];
+
+    return titles[index] || `Sugestão ${index + 1}`;
+  }
+
+  function toggleSuggestion(id: string) {
+    setExpandedSuggestions((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((item) => item !== id);
+      }
+
+      return [...prev, id];
+    });
+  }
+
+  function uniqueResources(resources: any[] = []) {
+    const map = new Map();
+
+    resources.forEach((resource) => {
+      const key = String(resource.title || resource.url || resource.id).toLowerCase();
+
+      if (!map.has(key)) {
+        map.set(key, resource);
+      }
+    });
+
+    return Array.from(map.values());
   }
 
   async function startConversation() {
@@ -251,57 +168,31 @@ export default function Sugestoes() {
       setLoading(true);
 
       if (trigger) {
-        const triggerValue =
-          Array.isArray(trigger)
-            ? trigger[0]
-            : trigger;
+        const triggerValue = Array.isArray(trigger) ? trigger[0] : trigger;
 
-        const parsedTriggers =
-          triggerValue
-            .split(",")
-            .map((item) =>
-              item.trim()
-            )
-            .filter(Boolean);
+        const parsedTriggers = triggerValue
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean);
 
-        if (
-          parsedTriggers.length >
-          0
-        ) {
-          setSelectedTriggers(
-            parsedTriggers
-          );
+        if (parsedTriggers.length > 0) {
+          setSelectedTriggers(parsedTriggers);
+          setRemainingTriggers(parsedTriggers);
 
-          setRemainingTriggers(
-            parsedTriggers
-          );
-
-          if (
-            parsedTriggers.length >
-            1
-          ) {
+          if (parsedTriggers.length > 1) {
             addBotMessage(
               "Você marcou mais de um gatilho 💙 Sobre qual deles quer falar primeiro?"
             );
 
             addOptions(
-              parsedTriggers.map(
-                (
-                  trigger
-                ) => ({
-                  id: trigger,
-                  name: trigger,
-                })
-              )
+              parsedTriggers.map((trigger) => ({
+                id: trigger,
+                name: trigger,
+              }))
             );
           } else {
-            setUsedTriggers([
-              parsedTriggers[0],
-            ]);
-
-            startTriggerConversation(
-              parsedTriggers[0]
-            );
+            setUsedTriggers([parsedTriggers[0]]);
+            startTriggerConversation(parsedTriggers[0]);
           }
 
           return;
@@ -310,58 +201,32 @@ export default function Sugestoes() {
 
       setIsFreeMode(true);
 
-      addBotMessage(
-        "Olá 💙 Sobre o que você gostaria de conversar hoje?"
-      );
+      addBotMessage("Olá 💙 Sobre o que você gostaria de conversar hoje?");
 
-      const response =
-        await api.get("/triggers");
-
-      const triggers =
-        response.data.data || [];
+      const response = await api.get("/triggers");
+      const triggers = response.data.data || [];
 
       addOptions(triggers);
     } catch (error) {
       console.log(error);
-
-      setErro(
-        "Erro ao iniciar conversa."
-      );
+      setErro("Erro ao iniciar conversa.");
     } finally {
       setLoading(false);
     }
   }
 
-  async function startTriggerConversation(
-    triggerName: string
-  ) {
-    addUserMessage(
-      `${getEmoji(
-        triggerName
-      )} ${triggerName}`
-    );
-
-    addBotMessage(
-      "O que mais contribuiu para isso?"
-    );
+  async function startTriggerConversation(triggerName: string) {
+    addUserMessage(`${getEmoji(triggerName)} ${triggerName}`);
+    addBotMessage("O que mais contribuiu para isso?");
 
     try {
       setLoading(true);
 
-      const subTriggers =
-        await fetchSubTriggers(
-          triggerName
-        );
-
-      addSubOptions(
-        subTriggers || []
-      );
+      const subTriggers = await fetchSubTriggers(triggerName);
+      addSubOptions(subTriggers || []);
     } catch (error) {
       console.log(error);
-
-      setErro(
-        "Erro ao carregar opções."
-      );
+      setErro("Erro ao carregar opções.");
     } finally {
       setLoading(false);
     }
@@ -370,21 +235,13 @@ export default function Sugestoes() {
   function disableAllOptions() {
     setMessages((prev) =>
       prev.map((msg) => {
-        if (
-          msg.type ===
-            "options" ||
-          msg.type ===
-            "suboptions"
-        ) {
+        if (msg.type === "options" || msg.type === "suboptions") {
           return {
             ...msg,
-            options:
-              msg.options?.map(
-                (opt) => ({
-                  ...opt,
-                  disabled: true,
-                })
-              ),
+            options: msg.options?.map((opt) => ({
+              ...opt,
+              disabled: true,
+            })),
           };
         }
 
@@ -393,155 +250,71 @@ export default function Sugestoes() {
     );
   }
 
-  function handleSelectTrigger(
-    item: any
-  ) {
-    const triggerName =
-      item.name;
+  function handleSelectTrigger(item: any) {
+    const triggerName = item.name;
 
-    if (
-      usedTriggers.includes(
-        triggerName
-      )
-    ) {
-      return;
-    }
+    if (usedTriggers.includes(triggerName)) return;
 
-    if (
-      isFreeMode &&
-      selectedTriggers.length ===
-        0
-    ) {
-      setTempSelectedTriggers(
-        (prev) => {
-          if (
-            prev.includes(
-              triggerName
-            )
-          ) {
-            return prev.filter(
-              (t) =>
-                t !==
-                triggerName
-            );
-          }
-
-          return [
-            ...prev,
-            triggerName,
-          ];
+    if (isFreeMode && selectedTriggers.length === 0) {
+      setTempSelectedTriggers((prev) => {
+        if (prev.includes(triggerName)) {
+          return prev.filter((t) => t !== triggerName);
         }
-      );
 
-      setIsChoosingTriggers(
-        true
-      );
+        return [...prev, triggerName];
+      });
 
+      setIsChoosingTriggers(true);
       return;
     }
 
     disableAllOptions();
 
-    setUsedTriggers((prev) => [
-      ...prev,
-      triggerName,
-    ]);
+    setUsedTriggers((prev) => [...prev, triggerName]);
+    setRemainingTriggers((prev) => prev.filter((t) => t !== triggerName));
 
-    setRemainingTriggers(
-      (prev) =>
-        prev.filter(
-          (t) =>
-            t !== triggerName
-        )
-    );
-
-    startTriggerConversation(
-      triggerName
-    );
+    startTriggerConversation(triggerName);
   }
 
-  async function handleSelectSubTrigger(
-    item: any
-  ) {
-    if (
-      selectedSubOptionIds.includes(
-        item.id.toString()
-      )
-    ) {
-      return;
-    }
+  async function handleSelectSubTrigger(item: any) {
+    if (selectedSubOptionIds.includes(item.id.toString())) return;
 
     disableAllOptions();
-
-    setSelectedSubOptionIds(
-      (prev) => [
-        ...prev,
-        item.id.toString(),
-      ]
-    );
+    setSelectedSubOptionIds((prev) => [...prev, item.id.toString()]);
 
     try {
       setLoading(true);
 
       addUserMessage(item.name);
 
-      const response =
-        await api.get(
-          `/sub-triggers/${item.id}`
-        );
+      const response = await api.get(`/sub-triggers/${item.id}`);
+      const data = response.data.data || response.data;
 
-      const data =
-        response.data.data ||
-        response.data;
+      addBotMessage("Entendi. Separei algumas sugestões que podem ajudar nesse momento 💙");
 
-      addBotMessage(
-        "Entendi. Separei algumas sugestões que podem ajudar nesse momento 💙"
+      addSuggestions(data.suggestions || [], data.resources || []);
+
+      const availableTriggers = remainingTriggers.filter(
+        (t) => !usedTriggers.includes(t)
       );
 
-      addSuggestions(
-        data.suggestions || [],
-        data.resources || []
-      );
-
-      const availableTriggers =
-        remainingTriggers.filter(
-          (t) =>
-            !usedTriggers.includes(
-              t
-            )
-        );
-
-      if (
-        availableTriggers.length >
-        0
-      ) {
+      if (availableTriggers.length > 0) {
         setTimeout(() => {
-          addBotMessage(
-            "Quer conversar sobre outro gatilho? 💙"
-          );
+          addBotMessage("Quer conversar sobre outro gatilho? 💙");
 
           addOptions(
-            availableTriggers.map(
-              (
-                trigger
-              ) => ({
-                id: trigger,
-                name: trigger,
-              })
-            )
+            availableTriggers.map((trigger) => ({
+              id: trigger,
+              name: trigger,
+            }))
           );
         }, 600);
       } else {
-        addBotMessage(
-          "Você não precisa passar por isso sem apoio 💙"
-        );
+        addBotMessage("Você não precisa passar por isso sem apoio 💙");
       }
     } catch (error) {
       console.log(error);
-
-      setErro(
-        "Erro ao carregar sugestões."
-      );
+      setErro("Erro ao carregar sugestões.");
     } finally {
       setLoading(false);
     }
@@ -551,439 +324,223 @@ export default function Sugestoes() {
     <View style={s.container}>
       {messages.length > 0 && (
         <View style={s.resetWrap}>
-          <Pressable
-            onPress={
-              resetConversation
-            }
-            style={s.resetButton}
-          >
-            <Text
-              style={s.resetText}
-            >
-              Recomeçar conversa 
-            </Text>
+          <Pressable onPress={() => setShowResetModal(true)} style={s.resetButton}>
+            <Text style={s.resetText}>Recomeçar conversa</Text>
           </Pressable>
         </View>
       )}
 
       <ScrollView
-        showsVerticalScrollIndicator={
-          false
-        }
-        contentContainerStyle={
-          s.content
-        }
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={s.content}
       >
-        {messages.map(
-          (message) => {
-            if (
-              message.type ===
-              "bot"
-            ) {
-              return (
-                <View
-                  key={
-                    message.id
-                  }
-                  style={[
-                    s.bubble,
-                    s.botBubble,
-                  ]}
-                >
-                  <Text
-                    style={
-                      s.botText
-                    }
-                  >
-                    {
-                      message.text
-                    }
-                  </Text>
-                </View>
-              );
-            }
-
-            if (
-              message.type ===
-              "user"
-            ) {
-              return (
-                <View
-                  key={
-                    message.id
-                  }
-                  style={[
-                    s.bubble,
-                    s.userBubble,
-                  ]}
-                >
-                  <Text
-                    style={
-                      s.userText
-                    }
-                  >
-                    {
-                      message.text
-                    }
-                  </Text>
-                </View>
-              );
-            }
-
-            if (
-              message.type ===
-              "options"
-            ) {
-              return (
-                <View
-                  key={
-                    message.id
-                  }
-                >
-                  <View
-                    style={
-                      s.grid
-                    }
-                  >
-                    {message.options?.map(
-                      (
-                        item
-                      ) => {
-                        const isSelected =
-                          tempSelectedTriggers.includes(
-                            item.name
-                          );
-
-                        return (
-                          <Pressable
-                            key={
-                              item.id
-                            }
-                            disabled={
-                              item.disabled
-                            }
-                            style={[
-                              s.gridCard,
-
-     isSelected && {
-  borderColor: "#2dd4bf",
-  backgroundColor: "rgba(45,212,191,.18)",
-  borderWidth: 2,
-
-  shadowColor: "#2dd4bf",
-  shadowOpacity: 0.15,
-  shadowRadius: 10,
-  shadowOffset: {
-    width: 0,
-    height: 0,
-  },
-
-  elevation: 3,
-},
-
-                              item.disabled && {
-                                opacity: 0.4,
-                              },
-                            ]}
-                            onPress={() =>
-                              handleSelectTrigger(
-                                item
-                              )
-                            }
-                          >
-                            <Text
-                              style={
-                                s.gridEmoji
-                              }
-                            >
-                              {getEmoji(
-                                item.name
-                              )}
-                            </Text>
-
-                            <Text
-                              style={
-                                s.gridText
-                              }
-                            >
-                              {
-                                item.name
-                              }
-                            </Text>
-                          </Pressable>
-                        );
-                      }
-                    )}
-                  </View>
-
-                  {isFreeMode &&
-                    isChoosingTriggers &&
-                    tempSelectedTriggers.length >
-                      0 && (
-                      <Pressable
-                        style={
-                          s.restartButton
-                        }
-                        onPress={() => {
-                          setSelectedTriggers(
-                            tempSelectedTriggers
-                          );
-
-                          setRemainingTriggers(
-                            tempSelectedTriggers
-                          );
-
-                          setIsChoosingTriggers(
-                            false
-                          );
-
-                          setMessages(
-                            (prev) =>
-                              prev.filter(
-                                (
-                                  msg
-                                ) =>
-                                  msg.type !==
-                                  "options"
-                              )
-                          );
-
-                          if (
-                            tempSelectedTriggers.length >
-                            1
-                          ) {
-                            addBotMessage(
-                              "Você marcou mais de um gatilho 💙 Sobre qual deles quer falar primeiro?"
-                            );
-
-                            addOptions(
-                              tempSelectedTriggers.map(
-                                (
-                                  trigger
-                                ) => ({
-                                  id: trigger,
-                                  name: trigger,
-                                })
-                              )
-                            );
-                          } else {
-                            setUsedTriggers([
-                              tempSelectedTriggers[0],
-                            ]);
-
-                            startTriggerConversation(
-                              tempSelectedTriggers[0]
-                            );
-                          }
-                        }}
-                      >
-                        <Text
-                          style={
-                            s.restartText
-                          }
-                        >
-                          Continuar
-                        </Text>
-                      </Pressable>
-                    )}
-                </View>
-              );
-            }
-
-            if (
-              message.type ===
-              "suboptions"
-            ) {
-              return (
-                <View
-                  key={
-                    message.id
-                  }
-                  style={
-                    s.optionsWrap
-                  }
-                >
-                  {message.options?.map(
-                    (
-                      item
-                    ) => (
-                      <Pressable
-                        key={
-                          item.id
-                        }
-                        disabled={
-                          item.disabled
-                        }
-                        style={[
-                          s.subOptionButton,
-
-                          item.disabled && {
-                            opacity: 0.4,
-                          },
-                        ]}
-                        onPress={() =>
-                          handleSelectSubTrigger(
-                            item
-                          )
-                        }
-                      >
-                        <Text
-                          style={
-                            s.subOptionText
-                          }
-                        >
-                          {
-                            item.name
-                          }
-                        </Text>
-                      </Pressable>
-                    )
-                  )}
-                </View>
-              );
-            }
-
-            if (
-              message.type ===
-              "suggestions"
-            ) {
-              return (
-                <View
-                  key={
-                    message.id
-                  }
-                >
-                  <View
-                    style={
-                      s.card
-                    }
-                  >
-                    <Text
-                      style={
-                        s.cardTitle
-                      }
-                    >
-                      Sugestões
-                    </Text>
-
-                    {message.suggestions?.map(
-                      (
-                        item: any
-                      ) => (
-                        <Text
-                          key={
-                            item.id
-                          }
-                          style={
-                            s.cardText
-                          }
-                        >
-                          •{" "}
-                          {
-                            item.text
-                          }
-                        </Text>
-                      )
-                    )}
-                  </View>
-
-                  {(message.resources ??
-                    []).length >
-                    0 && (
-                    <View
-                      style={
-                        s.card
-                      }
-                    >
-                      <Text
-                        style={
-                          s.cardTitle
-                        }
-                      >
-                        Recursos que podem ajudar
-                      </Text>
-
-                      {message.resources?.map(
-                        (
-                          resource: any
-                        ) => (
-                          <View
-                            key={
-                              resource.id
-                            }
-                            style={
-                              s.resourceCard
-                            }
-                          >
-                            <Text
-                              style={
-                                s.resourceType
-                              }
-                            >
-                              RECURSO
-                            </Text>
-
-                            <Text
-                              style={
-                                s.resourceTitle
-                              }
-                            >
-                              {
-                                resource.title
-                              }
-                            </Text>
-
-                            <Pressable
-                              onPress={() =>
-                                Linking.openURL(
-                                  resource.url
-                                )
-                              }
-                            >
-                              <Text
-                                style={
-                                  s.resourceLink
-                                }
-                              >
-                                Abrir recurso
-                              </Text>
-                            </Pressable>
-                          </View>
-                        )
-                      )}
-                    </View>
-                  )}
-                </View>
-              );
-            }
-
-            return null;
+        {messages.map((message) => {
+          if (message.type === "bot") {
+            return (
+              <View key={message.id} style={[s.bubble, s.botBubble]}>
+                <Text style={s.botText}>{message.text}</Text>
+              </View>
+            );
           }
-        )}
+
+          if (message.type === "user") {
+            return (
+              <View key={message.id} style={[s.bubble, s.userBubble]}>
+                <Text style={s.userText}>{message.text}</Text>
+              </View>
+            );
+          }
+
+          if (message.type === "options") {
+            return (
+              <View key={message.id}>
+                <View style={s.grid}>
+                  {message.options?.map((item) => {
+                    const isSelected =
+                      isFreeMode &&
+                      isChoosingTriggers &&
+                      tempSelectedTriggers.includes(item.name);
+
+                    return (
+                      <Pressable
+                        key={item.id}
+                        disabled={item.disabled}
+                        style={[
+                          s.gridCard,
+                          isSelected && s.gridCardSelected,
+                          item.disabled && { opacity: 0.4 },
+                        ]}
+                        onPress={() => handleSelectTrigger(item)}
+                      >
+                        <Text style={s.gridEmoji}>{getEmoji(item.name)}</Text>
+
+                        <Text style={s.gridText}>{item.name}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                {isFreeMode &&
+                  isChoosingTriggers &&
+                  tempSelectedTriggers.length > 0 && (
+                    <Pressable
+                      style={s.restartButton}
+                      onPress={() => {
+                        setSelectedTriggers(tempSelectedTriggers);
+                        setRemainingTriggers(tempSelectedTriggers);
+                        setIsChoosingTriggers(false);
+
+                        setMessages((prev) =>
+                          prev.filter((msg) => msg.type !== "options")
+                        );
+
+                        if (tempSelectedTriggers.length > 1) {
+                          addBotMessage(
+                            "Você marcou mais de um gatilho 💙 Sobre qual deles quer falar primeiro?"
+                          );
+
+                          addOptions(
+                            tempSelectedTriggers.map((trigger) => ({
+                              id: trigger,
+                              name: trigger,
+                            }))
+                          );
+                        } else {
+                          setUsedTriggers([tempSelectedTriggers[0]]);
+                          startTriggerConversation(tempSelectedTriggers[0]);
+                        }
+                      }}
+                    >
+                      <Text style={s.restartText}>Continuar</Text>
+                    </Pressable>
+                  )}
+              </View>
+            );
+          }
+
+          if (message.type === "suboptions") {
+            return (
+              <View key={message.id} style={s.optionsWrap}>
+                {message.options?.map((item) => (
+                  <Pressable
+                    key={item.id}
+                    disabled={item.disabled}
+                    style={[s.subOptionButton, item.disabled && { opacity: 0.4 }]}
+                    onPress={() => handleSelectSubTrigger(item)}
+                  >
+                    <Text style={s.subOptionText}>{item.name}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            );
+          }
+
+          if (message.type === "suggestions") {
+            const resources = uniqueResources(message.resources || []);
+
+            return (
+              <View key={message.id}>
+                <View style={s.card}>
+                  <Text style={s.cardTitle}>Sugestões</Text>
+
+                  {message.suggestions?.map((item: any, index: number) => {
+                    const suggestionId =
+                      item.id?.toString() || `${message.id}-${index}`;
+
+                    const isExpanded = expandedSuggestions.includes(suggestionId);
+
+                    return (
+                      <Pressable
+                        key={suggestionId}
+                        onPress={() => toggleSuggestion(suggestionId)}
+                        style={s.suggestionItem}
+                      >
+                        <Text style={s.suggestionTitle}>
+                          {isExpanded ? "▼" : "▶️"} {getSuggestionTitle(index)}
+                        </Text>
+
+                        {isExpanded && (
+                          <Text style={s.suggestionText}>{item.text}</Text>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                {resources.length > 0 && (
+                  <View style={s.card}>
+                    <Text style={s.cardTitle}>Recursos que podem ajudar</Text>
+
+                    {resources.map((resource: any) => (
+                      <View key={resource.id} style={s.resourceCard}>
+                        <Text style={s.resourceType}>RECURSO</Text>
+
+                        <Text style={s.resourceTitle}>{resource.title}</Text>
+
+                        <Pressable onPress={() => Linking.openURL(resource.url)}>
+                          <Text style={s.resourceLink}>Abrir recurso</Text>
+                        </Pressable>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            );
+          }
+
+          return null;
+        })}
 
         {loading && (
-          <View
-            style={[
-              s.bubble,
-              s.botBubble,
-            ]}
-          >
-            <Text
-              style={
-                s.botText
-              }
-            >
-              Digitando...
-            </Text>
+          <View style={[s.bubble, s.botBubble]}>
+            <Text style={s.botText}>Digitando...</Text>
           </View>
         )}
 
-        {!!erro && (
-          <Text style={s.error}>
-            {erro}
-          </Text>
-        )}
+        {!!erro && <Text style={s.error}>{erro}</Text>}
       </ScrollView>
+
+
+        
+
+
+
+
+        <Modal visible={showResetModal} transparent animationType="fade">
+  <View style={s.modalOverlay}>
+    <View style={s.modalBox}>
+      <Text style={s.modalTitle}>Recomeçar conversa?</Text>
+
+      <Text style={s.modalText}>
+        Isso vai apagar a conversa atual. Deseja continuar?
+      </Text>
+
+      <View style={s.modalButtons}>
+        <Pressable
+          style={s.modalCancel}
+          onPress={() => setShowResetModal(false)}
+        >
+          <Text style={s.modalCancelText}>Cancelar</Text>
+        </Pressable>
+
+        <Pressable
+          style={s.modalConfirm}
+          onPress={() => {
+            setShowResetModal(false);
+            resetConversation();
+          }}
+        >
+          <Text style={s.modalConfirmText}>Recomeçar</Text>
+        </Pressable>
+      </View>
+    </View>
+  </View>
+</Modal>
+
+
+
+
+
     </View>
   );
 }
@@ -1038,13 +595,11 @@ const s = StyleSheet.create({
   },
 
   userBubble: {
-  backgroundColor: "rgba(45,212,191,.14)",
-
-  borderWidth: 1,
-  borderColor: "rgba(45,212,191,.30)",
-
-  alignSelf: "flex-end",
-},
+    backgroundColor: "rgba(45,212,191,.14)",
+    borderWidth: 1,
+    borderColor: "rgba(45,212,191,.30)",
+    alignSelf: "flex-end",
+  },
 
   botText: {
     color: "#E5E7EB",
@@ -1074,6 +629,12 @@ const s = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#243041",
+  },
+
+  gridCardSelected: {
+    borderColor: "#2dd4bf",
+    backgroundColor: "rgba(45,212,191,.18)",
+    borderWidth: 2,
   },
 
   gridEmoji: {
@@ -1123,11 +684,27 @@ const s = StyleSheet.create({
     marginBottom: 16,
   },
 
-  cardText: {
+  suggestionItem: {
+    backgroundColor: "#111827",
+    borderWidth: 1,
+    borderColor: "#243041",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+  },
+
+  suggestionTitle: {
+    color: "#E5E7EB",
+    fontWeight: "700",
+    fontSize: 14,
+    lineHeight: 21,
+  },
+
+  suggestionText: {
     color: "#CBD5E1",
-    fontSize: 15,
-    lineHeight: 26,
-    marginBottom: 10,
+    fontSize: 14,
+    lineHeight: 24,
+    marginTop: 12,
   },
 
   resourceCard: {
@@ -1182,4 +759,71 @@ const s = StyleSheet.create({
     marginTop: 20,
     textAlign: "center",
   },
+
+
+modalOverlay: {
+  flex: 1,
+  backgroundColor: "rgba(0,0,0,0.65)",
+  justifyContent: "center",
+  alignItems: "center",
+  padding: 24,
+},
+
+modalBox: {
+  width: "100%",
+  backgroundColor: "#0F172A",
+  borderRadius: 22,
+  padding: 22,
+  borderWidth: 1,
+  borderColor: "#243041",
+},
+
+modalTitle: {
+  color: "#E5E7EB",
+  fontSize: 20,
+  fontWeight: "800",
+  marginBottom: 10,
+},
+
+modalText: {
+  color: "#CBD5E1",
+  fontSize: 15,
+  lineHeight: 22,
+  marginBottom: 22,
+},
+
+modalButtons: {
+  flexDirection: "row",
+  justifyContent: "flex-end",
+  gap: 12,
+},
+
+modalCancel: {
+  backgroundColor: "#111827",
+  borderWidth: 1,
+  borderColor: "#243041",
+  paddingVertical: 12,
+  paddingHorizontal: 16,
+  borderRadius: 14,
+},
+
+modalCancelText: {
+  color: "#CBD5E1",
+  fontWeight: "700",
+},
+
+modalConfirm: {
+  backgroundColor: "#2dd4bf",
+  paddingVertical: 12,
+  paddingHorizontal: 16,
+  borderRadius: 14,
+},
+
+modalConfirmText: {
+  color: "#08111F",
+  fontWeight: "900",
+},
+
+
+
 });
