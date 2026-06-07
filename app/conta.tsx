@@ -4,34 +4,28 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function Conta() {
   const router = useRouter();
 
   const background = useThemeColor({}, "background");
-const card = useThemeColor({}, "card");
-const text = useThemeColor({}, "text");
-const textSecondary = useThemeColor({}, "textSecondary");
-const border = useThemeColor({}, "border");
-const danger = useThemeColor({}, "danger");
-const primary = useThemeColor({}, "primary");
+  const card = useThemeColor({}, "card");
+  const text = useThemeColor({}, "text");
+  const textSecondary = useThemeColor({}, "textSecondary");
+  const border = useThemeColor({}, "border");
+  const danger = useThemeColor({}, "danger");
+  const primary = useThemeColor({}, "primary");
 
-const styles = createStyles(
-  background,
-  card,
-  text,
-  textSecondary,
-  border,
-  primary,
-  danger
-);
+  const styles = createStyles(
+    background,
+    card,
+    text,
+    textSecondary,
+    border,
+    primary,
+    danger,
+  );
 
   const [email, setEmail] = useState("Não informado");
 
@@ -48,15 +42,13 @@ const styles = createStyles(
     carregarEmail();
   }, []);
 
-  
-
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Conta</Text>
 
       <View style={styles.card}>
         <View style={styles.row}>
-          <Ionicons name="mail-outline" size={24} color="#2dd4bf" />
+          <Ionicons name="mail-outline" size={24} color={primary} />
           <View>
             <Text style={styles.label}>E-mail cadastrado</Text>
             <Text style={styles.value}>{email}</Text>
@@ -90,7 +82,7 @@ const createStyles = (
   textSecondary: string,
   border: string,
   primary: string,
-  danger: string
+  danger: string,
 ) =>
   StyleSheet.create({
     container: {

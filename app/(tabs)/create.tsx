@@ -15,6 +15,7 @@ import { api } from "@/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import { DatePickerModal } from "react-native-paper-dates";
 import { Provider as PaperProvider, DefaultTheme } from "react-native-paper";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 const MOODS = [
   { key: "muito_triste", emoji: "😞", label: "Muito mal" },
@@ -39,6 +40,13 @@ const theme = {
 
 export default function CreateMood() {
   const router = useRouter();
+
+  const background = useThemeColor({}, "background");
+  const cardColor = useThemeColor({}, "card");
+  const text = useThemeColor({}, "text");
+  const textSecondary = useThemeColor({}, "textSecondary");
+  const border = useThemeColor({}, "border");
+  const primary = useThemeColor({}, "primary");
 
   const hoje = new Date();
   const ontem = new Date();
@@ -76,7 +84,7 @@ export default function CreateMood() {
   useFocusEffect(
     useCallback(() => {
       resetForm();
-    }, [resetForm])
+    }, [resetForm]),
   );
 
   useEffect(() => {
@@ -98,7 +106,7 @@ export default function CreateMood() {
 
   const moodSelected = useMemo(
     () => MOODS.find((m) => m.key === moodKey),
-    [moodKey]
+    [moodKey],
   );
 
   const lvl = Number(level);
@@ -107,7 +115,7 @@ export default function CreateMood() {
     setSelectedTriggers((prev) =>
       prev.includes(triggerId)
         ? prev.filter((id) => id !== triggerId)
-        : [...prev, triggerId]
+        : [...prev, triggerId],
     );
   }
 
@@ -168,8 +176,7 @@ export default function CreateMood() {
 
       showToast();
 
-      const humorRuim =
-        moodKey === "muito_triste" || moodKey === "triste";
+      const humorRuim = moodKey === "muito_triste" || moodKey === "triste";
 
       const temGatilho = selectedTriggers.length > 0;
 
@@ -201,7 +208,7 @@ export default function CreateMood() {
       setErro(
         e?.response?.data?.message ||
           e?.message ||
-          "Não foi possível criar o mood."
+          "Não foi possível criar o mood.",
       );
     } finally {
       setLoading(false);
@@ -231,19 +238,32 @@ export default function CreateMood() {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={s.container}>
+        <View
+          style={[
+            s.container,
+            {
+              backgroundColor: background,
+            },
+          ]}
+        >
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={s.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={s.card}>
-              <Text style={s.title}>Criar mood</Text>
-              <Text style={s.subtitle}>Registre como você está hoje</Text>
+            <View
+              style={[
+                s.card,
+                { backgroundColor: cardColor, borderColor: border },
+              ]}
+            >
+              <Text style={[s.title, { color: text }]}>Criar mood</Text>
+              <Text style={[s.subtitle, { color: textSecondary }]}>
+                Registre como você está hoje
+              </Text>
 
-              <Text style={s.label}>Humor</Text>
-
+              <Text style={[s.label, { color: textSecondary }]}>Humor</Text>
               <View style={s.row}>
                 {MOODS.map((m) => {
                   const active = m.key === moodKey;
@@ -264,18 +284,27 @@ export default function CreateMood() {
                 Selecionado: {moodSelected?.emoji} • {moodSelected?.label}
               </Text>
 
-              <Text style={s.label}>Como você descreve hoje?</Text>
-
+              <Text style={[s.label, { color: textSecondary }]}>
+                Como você descreve hoje?
+              </Text>
               <TextInput
                 value={title}
                 onChangeText={setTitle}
                 placeholder="Ex: Produtivo, cansativo, inspirador..."
                 placeholderTextColor="#6B7280"
-                style={s.input}
+                style={[
+                  s.input,
+                  {
+                    backgroundColor: background,
+                    borderColor: border,
+                    color: text,
+                  },
+                ]}
               />
 
-              <Text style={s.label}>Nível (1 a 5)</Text>
-
+              <Text style={[s.label, { color: textSecondary }]}>
+                Nível (1 a 5)
+              </Text>
               <View style={s.levelRow}>
                 {[1, 2, 3, 4, 5].map((n) => {
                   const active = level === n;
@@ -296,20 +325,25 @@ export default function CreateMood() {
 
               <Text style={s.muted}>Intensidade: {levelText(level)}</Text>
 
-              <Text style={s.label}>Data</Text>
-
+              <Text style={[s.label, { color: textSecondary }]}>Data</Text>
               <Pressable
-                style={s.dateInput}
+                style={[
+                  s.dateInput,
+                  background === "#020817"
+                    ? {}
+                    : {
+                        backgroundColor: "#DCE7EC",
+                        borderColor: "#C5D3DA",
+                      },
+                ]}
                 onPress={() => setOpenDatePicker(true)}
               >
                 <View style={s.dateContent}>
-                  <Text style={s.dateText}>{formatDateToDisplay(date)}</Text>
+                  <Text style={[s.dateText, { color: text }]}>
+                    {formatDateToDisplay(date)}
+                  </Text>
 
-                  <Ionicons
-                    name="calendar-outline"
-                    size={20}
-                    color="#94A3B8"
-                  />
+                  <Ionicons name="calendar-outline" size={20} color="#94A3B8" />
                 </View>
               </Pressable>
 
@@ -336,8 +370,9 @@ export default function CreateMood() {
                 uppercase={false}
               />
 
-              <Text style={s.label}>O que pode ter influenciado esse humor?</Text>
-
+              <Text style={[s.label, { color: text }]}>
+                O que pode ter influenciado esse humor?
+              </Text>
               {loadingTriggers ? (
                 <Text style={s.muted}>Carregando gatilhos...</Text>
               ) : (
@@ -350,9 +385,28 @@ export default function CreateMood() {
                         <Pressable
                           key={trigger.id}
                           onPress={() => toggleTrigger(trigger.id)}
-                          style={[s.chip, active && s.chipActive]}
+                          style={[
+                            s.chip,
+                            background === "#020817"
+                              ? {}
+                              : {
+                                  backgroundColor: "#DCE7EC",
+                                  borderColor: "#C5D3DA",
+                                },
+                            active && s.chipActive,
+                          ]}
                         >
-                          <Text style={[s.chipText, active && s.chipTextActive]}>
+                          <Text
+                            style={[
+                              s.chipText,
+                              background === "#020817"
+                                ? {}
+                                : {
+                                    color: "#1E293B",
+                                  },
+                              active && s.chipTextActive,
+                            ]}
+                          >
                             {trigger.label || trigger.name}
                           </Text>
                         </Pressable>
@@ -368,14 +422,23 @@ export default function CreateMood() {
                 </>
               )}
 
-              <Text style={s.label}>Observação (opcional)</Text>
-
+              <Text style={[s.label, { color: textSecondary }]}>
+                Observação (opcional)
+              </Text>
               <TextInput
                 value={note}
                 onChangeText={setNote}
                 placeholder="O que aconteceu hoje?"
                 placeholderTextColor="#6B7280"
-                style={[s.input, { height: 110 }]}
+                style={[
+                  s.input,
+                  {
+                    height: 110,
+                    backgroundColor: background,
+                    borderColor: border,
+                    color: text,
+                  },
+                ]}
                 multiline
               />
 

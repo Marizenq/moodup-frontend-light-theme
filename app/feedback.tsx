@@ -2,17 +2,20 @@ import { api } from "@/services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
 import {
-    Modal,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 const EMOJIS = ["😢", "🙁", "😐", "🙂", "😍"];
 
 export default function Feedback() {
+  const background = useThemeColor({}, "background");
+  const textColor = useThemeColor({}, "text");
   const [selected, setSelected] = useState<number | null>(null);
   const [text, setText] = useState("");
   const [jaEnviou, setJaEnviou] = useState(false);
@@ -64,8 +67,8 @@ export default function Feedback() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>
+    <View style={[styles.container, { backgroundColor: background }]}>
+      <Text style={[styles.title, { color: textColor }]}>
         {jaEnviou
           ? "Quer atualizar sua avaliação? 😊"
           : "Como foi sua experiência?"}
@@ -94,8 +97,14 @@ export default function Feedback() {
       <TextInput
         placeholder="Conte um pouco da sua experiência..."
         placeholderTextColor="#6B7280"
-        style={styles.input}
-        multiline
+style={[
+  styles.input,
+  background === "#020817"
+    ? {}
+    : {
+        backgroundColor: "#CEE7F2",
+      },
+]}        multiline
         maxLength={200}
         value={text}
         onChangeText={setText}
@@ -114,10 +123,11 @@ export default function Feedback() {
       </Pressable>
 
       <Text style={styles.infoText}>
-  Para problemas técnicos ou sugestões de melhoria, entre em contato pelo e-mail:
-  {"\n"}
-  <Text style={styles.email}>aplicativo.moodup@gmail.com</Text>
-</Text>
+        Para problemas técnicos ou sugestões de melhoria, entre em contato pelo
+        e-mail:
+        {"\n"}
+        <Text style={styles.email}>aplicativo.moodup@gmail.com</Text>
+      </Text>
 
       <Modal transparent animationType="fade" visible={showSuccess}>
         <View style={styles.overlay}>
@@ -272,9 +282,8 @@ const styles = StyleSheet.create({
     color: "#08101A",
     fontWeight: "900",
   },
-email: {
-  color: "#2dd4bf",
-  fontWeight: "700",
-},
-
+  email: {
+    color: "#2dd4bf",
+    fontWeight: "700",
+  },
 });

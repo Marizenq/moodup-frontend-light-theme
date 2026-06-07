@@ -2,23 +2,26 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import {
-    Image,
-    Modal,
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
-} from "react-native";
+import { Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useThemeColor } from "@/hooks/use-theme-color";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function Perfil() {
   const router = useRouter();
+  const background = useThemeColor({}, "background");
+  const card = useThemeColor({}, "card");
+  const text = useThemeColor({}, "text");
+  const textSecondary = useThemeColor({}, "textSecondary");
+  const border = useThemeColor({}, "border");
+  const primary = useThemeColor({}, "primary");
+  const danger = useThemeColor({}, "danger");
+  const colorScheme = useColorScheme();
 
   const [nome, setNome] = useState("Usuário");
   const [showModal, setShowModal] = useState(false);
 
   const [avatar, setAvatar] = useState(
-    "https://api.dicebear.com/9.x/adventurer/png?seed=Ana&backgroundColor=b6e3f4"
+    "https://api.dicebear.com/9.x/adventurer/png?seed=Ana&backgroundColor=b6e3f4",
   );
 
   async function sair() {
@@ -41,45 +44,83 @@ export default function Perfil() {
       }
 
       carregarDados();
-    }, [])
+    }, []),
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerCard}>
+    <View style={[styles.container, { backgroundColor: background }]}>
+      <View
+        style={[
+          styles.headerCard,
+          {
+            backgroundColor: card,
+            borderColor: border,
+          },
+        ]}
+      >
         <View style={styles.avatarBox}>
           <Image source={{ uri: avatar }} style={styles.avatar} />
         </View>
 
-        <Text style={styles.name}>Olá, {nome} 👋</Text>
+        <Text style={[styles.name, { color: text }]}>Olá, {nome} 👋</Text>
 
         <Pressable onPress={() => router.push("/mudar-avatar" as any)}>
-          <Text style={styles.changeAvatar}>Mudar avatar</Text>
+          <Text style={[styles.changeAvatar, { color: primary }]}>
+            Mudar avatar
+          </Text>
         </Pressable>
       </View>
-
       <View style={styles.menu}>
-        <MenuItem icon="person-outline" label="Conta" onPress={() => router.push("/conta" as any)} />
-        <MenuItem icon="notifications-outline" label="Notificações" onPress={() => router.push("/notificacoes" as any)} />
-        <MenuItem icon="star-outline" label="Feedback e avaliação" onPress={() => router.push("/feedback" as any)} />
+        <MenuItem
+          icon="person-outline"
+          label="Conta"
+          onPress={() => router.push("/conta" as any)}
+        />
+        <MenuItem
+          icon="notifications-outline"
+          label="Notificações"
+          onPress={() => router.push("/notificacoes" as any)}
+        />
+        <MenuItem
+          icon="star-outline"
+          label="Feedback e avaliação"
+          onPress={() => router.push("/feedback" as any)}
+        />
+        <MenuItem
+          icon="settings-outline"
+          label="Preferências"
+          onPress={() => router.push("/preferencias" as any)}
+        />
 
         <Pressable
           onPress={() => setShowModal(true)}
           style={({ pressed }) => [
             styles.item,
-            styles.logout,
+            colorScheme === "light"
+              ? {
+                  backgroundColor: card,
+                  borderColor: danger,
+                  borderWidth: 1,
+                }
+              : styles.logout,
             pressed && { opacity: 0.7 },
           ]}
         >
           <View style={styles.itemLeft}>
-            <Ionicons name="log-out-outline" size={22} color="#EF4444" />
-            <Text style={styles.logoutText}>Sair</Text>
+            <Ionicons name="log-out-outline" size={22} color={danger} />
+            <Text
+              style={[
+                styles.logoutText,
+                colorScheme === "light" && { color: danger },
+              ]}
+            >
+              Sair
+            </Text>
           </View>
 
           <Ionicons name="chevron-forward" size={20} color="#64748B" />
         </Pressable>
       </View>
-
       <Modal transparent animationType="fade" visible={showModal}>
         <View style={styles.overlay}>
           <View style={styles.modalBox}>
@@ -109,17 +150,25 @@ export default function Perfil() {
 }
 
 function MenuItem({ icon, label, onPress }: any) {
+  const card = useThemeColor({}, "card");
+  const text = useThemeColor({}, "text");
+  const border = useThemeColor({}, "border");
+  const primary = useThemeColor({}, "primary");
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.item,
+        {
+          backgroundColor: card,
+          borderColor: border,
+        },
         pressed && { opacity: 0.7 },
       ]}
     >
       <View style={styles.itemLeft}>
-        <Ionicons name={icon} size={22} color="#2dd4bf" />
-        <Text style={styles.itemText}>{label}</Text>
+        <Ionicons name={icon} size={22} color={primary} />
+        <Text style={[styles.itemText, { color: text }]}>{label}</Text>
       </View>
 
       <Ionicons name="chevron-forward" size={20} color="#64748B" />

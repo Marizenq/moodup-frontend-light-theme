@@ -1,22 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
-import {
-  Pressable,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 import * as Notifications from "expo-notifications";
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  } as any),
+  handleNotification: async () =>
+    ({
+      shouldShowAlert: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }) as any,
 });
 
 const mensagens = [
@@ -29,40 +25,32 @@ const mensagens = [
 ];
 
 export default function Notificacoes() {
+  const background = useThemeColor({}, "background");
+  const text = useThemeColor({}, "text");
   const [lembreteHumor, setLembreteHumor] = useState(true);
   const [resumoSemanal, setResumoSemanal] = useState(false);
   const [mensagensApoio, setMensagensApoio] = useState(false);
 
   useEffect(() => {
     async function carregarPreferencias() {
-      const lembrete = await AsyncStorage.getItem(
-        "notif_lembrete_humor"
-      );
+      const lembrete = await AsyncStorage.getItem("notif_lembrete_humor");
 
-      const resumo = await AsyncStorage.getItem(
-        "notif_resumo_semanal"
-      );
+      const resumo = await AsyncStorage.getItem("notif_resumo_semanal");
 
-      const apoio = await AsyncStorage.getItem(
-        "notif_mensagens_apoio"
-      );
+      const apoio = await AsyncStorage.getItem("notif_mensagens_apoio");
 
-      if (lembrete !== null)
-        setLembreteHumor(lembrete === "true");
+      if (lembrete !== null) setLembreteHumor(lembrete === "true");
 
-      if (resumo !== null)
-        setResumoSemanal(resumo === "true");
+      if (resumo !== null) setResumoSemanal(resumo === "true");
 
-      if (apoio !== null)
-        setMensagensApoio(apoio === "true");
+      if (apoio !== null) setMensagensApoio(apoio === "true");
     }
 
     carregarPreferencias();
   }, []);
 
   async function salvarAlteracoes() {
-    const { status } =
-      await Notifications.requestPermissionsAsync();
+    const { status } = await Notifications.requestPermissionsAsync();
 
     if (status !== "granted") {
       alert("Permissão de notificação negada.");
@@ -108,9 +96,7 @@ export default function Notificacoes() {
       await Notifications.scheduleNotificationAsync({
         content: {
           title: "MoodUp 🌿",
-          body: mensagens[
-            Math.floor(Math.random() * mensagens.length)
-          ],
+          body: mensagens[Math.floor(Math.random() * mensagens.length)],
         },
 
         trigger: {
@@ -120,28 +106,20 @@ export default function Notificacoes() {
       });
     }
 
-    await AsyncStorage.setItem(
-      "notif_lembrete_humor",
-      String(lembreteHumor)
-    );
+    await AsyncStorage.setItem("notif_lembrete_humor", String(lembreteHumor));
 
-    await AsyncStorage.setItem(
-      "notif_resumo_semanal",
-      String(resumoSemanal)
-    );
+    await AsyncStorage.setItem("notif_resumo_semanal", String(resumoSemanal));
 
-    await AsyncStorage.setItem(
-      "notif_mensagens_apoio",
-      String(mensagensApoio)
-    );
+    await AsyncStorage.setItem("notif_mensagens_apoio", String(mensagensApoio));
 
     alert("Notificações atualizadas 💜");
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Notificações</Text>
-
+    <View style={[styles.container, { backgroundColor: background }]}>
+<Text style={[styles.title, { color: text }]}>
+  Notificações
+</Text>
       <Text style={styles.subtitle}>
         Escolha quais lembretes deseja receber no futuro.
       </Text>
@@ -170,49 +148,55 @@ export default function Notificacoes() {
         onChange={setMensagensApoio}
       />
 
-      <Pressable
-        style={styles.button}
-        onPress={salvarAlteracoes}
-      >
-        <Text style={styles.buttonText}>
-          Salvar alterações
-        </Text>
+      <Pressable style={styles.button} onPress={salvarAlteracoes}>
+        <Text style={styles.buttonText}>Salvar alterações</Text>
       </Pressable>
     </View>
   );
 }
 
-function NotificationItem({
-  icon,
-  title,
-  description,
-  value,
-  onChange,
-}: any) {
+function NotificationItem({ icon, title, description, value, onChange }: any) {
+  const background = useThemeColor({}, "background");
   return (
-    <View style={styles.card}>
+   <View
+  style={[
+    styles.card,
+    background === "#020817"
+      ? {}
+      : {
+          backgroundColor: "#cee7f2",
+          borderColor: "#7BC3E4",
+        }
+  ]}
+>
       <View style={styles.left}>
-        <Ionicons
-          name={icon}
-          size={24}
-          color="#2dd4bf"
-        />
+        <Ionicons name={icon} size={24} color="#2dd4bf" />
 
         <View style={styles.textBox}>
-          <Text style={styles.cardTitle}>
-            {title}
-          </Text>
+         <Text
+  style={[
+    styles.cardTitle,
+    background === "#020817"
+      ? {}
+      : { color: "#1E293B" },
+  ]}
+>
+  {title}
+</Text>
 
-          <Text style={styles.cardDescription}>
-            {description}
-          </Text>
-        </View>
+<Text
+  style={[
+    styles.cardDescription,
+    background === "#020817"
+      ? {}
+      : { color: "#475569" },
+  ]}
+>
+  {description}
+</Text>        </View>
       </View>
 
-      <Switch
-        value={value}
-        onValueChange={onChange}
-      />
+      <Switch value={value} onValueChange={onChange} />
     </View>
   );
 }

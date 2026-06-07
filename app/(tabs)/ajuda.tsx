@@ -2,15 +2,17 @@ import { api } from "@/services/api";
 import { useRouter, useFocusEffect } from "expo-router";
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
-    ActivityIndicator,
-    Linking,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
-    TextInput,
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
 } from "react-native";
+import { useThemeColor } from "@/hooks/use-theme-color";
+
 
 type Mood = {
   id: number;
@@ -33,17 +35,26 @@ type Resource = {
 export default function AjudaScreen() {
   const router = useRouter();
 
+  const background = useThemeColor({}, "background");
+  const card = useThemeColor({}, "card");
+  const text = useThemeColor({}, "text");
+  const textSecondary = useThemeColor({}, "textSecondary");
+  const border = useThemeColor({}, "border");
+  const primary = useThemeColor({}, "primary");
+
   const [lastMood, setLastMood] = useState<Mood | null>(null);
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState<"todos" | Resource["type"]>("todos");
+  const [filterType, setFilterType] = useState<"todos" | Resource["type"]>(
+    "todos",
+  );
 
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [])
+    }, []),
   );
 
   async function loadData() {
@@ -58,7 +69,12 @@ export default function AjudaScreen() {
       const list: Resource[] = resRes.data?.data ?? [];
       setResources(list);
     } catch (e: any) {
-      console.log("Erro Ajuda:", e?.response?.status, e?.response?.data, e?.message);
+      console.log(
+        "Erro Ajuda:",
+        e?.response?.status,
+        e?.response?.data,
+        e?.message,
+      );
     } finally {
       setLoading(false);
     }
@@ -84,8 +100,7 @@ export default function AjudaScreen() {
         r.title.toLowerCase().includes(search.toLowerCase()) ||
         (r.description || "").toLowerCase().includes(search.toLowerCase());
 
-      const matchType =
-        filterType === "todos" || r.type === filterType;
+      const matchType = filterType === "todos" || r.type === filterType;
 
       return matchSearch && matchType;
     });
@@ -116,20 +131,70 @@ export default function AjudaScreen() {
 
     return (
       <View style={{ marginTop: 20 }}>
-        <Text style={s.sectionTitle}>{title}</Text>
-
+        <Text
+          style={[
+            s.sectionTitle,
+            {
+              color: background === "#020817" ? "#E5E7EB" : "#334155",
+            }
+          ]}
+        >
+          {title}
+        </Text>
         <View style={{ gap: 10, marginTop: 10 }}>
           {items.map((it) => (
-            <View key={String(it.id)} style={s.card}>
-              <Text style={s.cardTitle}>{it.title}</Text>
-
-              {!!it.author && <Text style={s.meta}>Por: {it.author}</Text>}
-
-              {!!it.duration_minutes && (
-                <Text style={s.meta}>Duração: {it.duration_minutes} min</Text>
+            <View
+              key={String(it.id)}
+              style={[
+                s.card,
+                background === "#020817"
+                  ? {}
+                  : {
+                      backgroundColor: "#CEE7F2",
+                      borderColor: "#C5D3DA",
+                    }
+              ]}
+            >
+              <Text
+                style={[
+                  s.cardTitle,
+                  background === "#020817" ? {} : { color: "#1E293B" },
+                ]}
+              >
+                {it.title}
+              </Text>
+              {!!it.author && (
+                <Text
+                  style={[
+                    s.meta,
+                    background === "#020817" ? {} : { color: "#475569" },
+                  ]}
+                >
+                  Por: {it.author}
+                </Text>
               )}
 
-              {!!it.description && <Text style={s.cardDesc}>{it.description}</Text>}
+              {!!it.duration_minutes && (
+                <Text
+                  style={[
+                    s.meta,
+                    background === "#020817" ? {} : { color: "#475569" },
+                  ]}
+                >
+                  Duração: {it.duration_minutes} min
+                </Text>
+              )}
+
+              {!!it.description && (
+                <Text
+                  style={[
+                    s.cardDesc,
+                    background === "#020817" ? {} : { color: "#475569" },
+                  ]}
+                >
+                  {it.description}
+                </Text>
+              )}
 
               {!!it.url && (
                 <Pressable style={s.btn} onPress={() => openUrl(it.url)}>
@@ -152,9 +217,15 @@ export default function AjudaScreen() {
   }
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={{ padding: 16, paddingBottom: 30 }}>
-      <Text style={s.title}>Auxílio Personalizado</Text>
-
+    <ScrollView
+      style={[
+        s.container,
+        {
+          backgroundColor: background,
+        },
+      ]}
+      contentContainerStyle={{ padding: 16, paddingBottom: 30 }}
+    >
       {/* 🔍 BUSCA */}
       <TextInput
         value={search}
@@ -166,16 +237,19 @@ export default function AjudaScreen() {
 
       {/* 🎯 FILTROS */}
       <View style={s.filterRow}>
-        {["todos","video","musica","livro","exercicio"].map((type) => (
+        {["todos", "video", "musica", "livro", "exercicio"].map((type) => (
           <Pressable
             key={type}
             onPress={() => setFilterType(type as any)}
-            style={[
-              s.chip,
-              filterType === type && s.chipActive
-            ]}
+            style={[s.chip, filterType === type && s.chipActive]}
           >
-            <Text style={{ color: "#E5E7EB" }}>{type}</Text>
+            <Text
+              style={{
+                color: background === "#020817" ? "#E5E7EB" : "#334155",
+              }}
+            >
+              {type}
+            </Text>
           </Pressable>
         ))}
       </View>
@@ -202,9 +276,7 @@ export default function AjudaScreen() {
         <>
           <View style={s.neutralCard}>
             <Text style={s.neutralTitle}>🌿 Dia estável</Text>
-            <Text style={s.neutralText}>
-              Manter o equilíbrio é importante.
-            </Text>
+            <Text style={s.neutralText}>Manter o equilíbrio é importante.</Text>
           </View>
 
           {renderSection("🧘 Exercícios leves", byType.exercicio)}
@@ -218,28 +290,43 @@ export default function AjudaScreen() {
         <>
           <View style={s.alertCard}>
             <Text style={s.alertTitle}>💙 Você não está sozinha</Text>
-            <Text style={s.alertText}>
+            <Text
+              style={[
+                s.alertText,
+                {
+                  color: background === "#020817" ? "#CBD5E1" : "#334155",
+                },
+              ]}
+            >
               Aqui estão alguns recursos que podem ajudar:
             </Text>
           </View>
 
           {/* CVV */}
-          <Pressable style={s.cvvButton} onPress={() => Linking.openURL("tel:188")}>
+          <Pressable
+            style={s.cvvButton}
+            onPress={() => Linking.openURL("tel:188")}
+          >
             <Text style={s.cvvButtonText}>📞 Ligar para o CVV (188)</Text>
             <Text style={s.cvvButtonSubtext}>Atendimento gratuito 24h</Text>
           </Pressable>
 
           {/* 🔥 PSICÓLOGA RESTAURADA */}
-          <Pressable 
-            style={s.psicologaButton} 
+          <Pressable
+            style={s.psicologaButton}
             onPress={() => Linking.openURL("mailto:psicologa@moodup.com.br")}
           >
             <Text style={s.psicologaButtonText}>🎓 Falar com a psicóloga</Text>
-            <Text style={s.psicologaButtonSubtext}>Envie um e-mail para agendar</Text>
+            <Text style={s.psicologaButtonSubtext}>
+              Envie um e-mail para agendar
+            </Text>
           </Pressable>
 
           {/* IA */}
-          <Pressable style={s.aiButton} onPress={() => router.push("/(tabs)/sugestoes")}>
+          <Pressable
+            style={s.aiButton}
+            onPress={() => router.push("/(tabs)/sugestoes")}
+          >
             <Text style={s.aiButtonText}>💬 Conversar com a IA</Text>
             <Text style={s.aiButtonSubtext}>Desabafe de forma anônima</Text>
           </Pressable>
