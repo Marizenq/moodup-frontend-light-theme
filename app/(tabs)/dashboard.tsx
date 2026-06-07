@@ -19,17 +19,23 @@ import { LineChart } from "react-native-chart-kit";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { useFocusEffect } from "expo-router";
 import { router } from "expo-router";
-
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 export default function Dashboard() {
   const { width } = useWindowDimensions();
+
+  const background = useThemeColor({}, "background");
+  const textColor = useThemeColor({}, "text");
+
+  const isLight = background === "#EEF2F7";
+
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState<any[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
 
   const [showHistory, setShowHistory] = useState(false);
   const [period, setPeriod] = useState<"7d" | "30d" | "all">("7d");
-  
+
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedMood, setSelectedMood] = useState<any>(null);
 
@@ -37,17 +43,20 @@ export default function Dashboard() {
     try {
       const historyResponse = await moodApi.getAll();
       console.log(historyResponse.data);
-console.log(historyResponse.data.data?.length);
+      console.log(historyResponse.data.data?.length);
 
       let historyData = [];
-      if (historyResponse.data?.data && Array.isArray(historyResponse.data.data)) {
+      if (
+        historyResponse.data?.data &&
+        Array.isArray(historyResponse.data.data)
+      ) {
         historyData = historyResponse.data.data;
       } else if (Array.isArray(historyResponse.data)) {
         historyData = historyResponse.data;
       } else {
         historyData = [];
       }
-      
+
       setHistory(historyData);
     } catch (error: any) {
       console.log("❌ ERRO DASH:", error?.response?.data || error.message);
@@ -57,10 +66,13 @@ console.log(historyResponse.data.data?.length);
 
   const checkAdminStatus = async () => {
     try {
-      const response = await api.get('/me');
-      setIsAdmin(response.data?.user?.role === 'admin');
+      const response = await api.get("/me");
+      setIsAdmin(response.data?.user?.role === "admin");
     } catch (error: any) {
-      console.error('❌ Erro ao verificar admin:', error?.response?.data || error.message);
+      console.error(
+        "❌ Erro ao verificar admin:",
+        error?.response?.data || error.message,
+      );
       setIsAdmin(false);
     }
   };
@@ -74,7 +86,7 @@ console.log(historyResponse.data.data?.length);
         setLoading(false);
       };
       loadAll();
-    }, [])
+    }, []),
   );
 
   // 🔎 filtro por período
@@ -92,83 +104,76 @@ console.log(historyResponse.data.data?.length);
   }, [history, period]);
 
   const streak = useMemo(() => {
-  if (!history.length) return 0;
+    if (!history.length) return 0;
 
-  const sorted = [...history].sort(
-    (a, b) =>
-      new Date(b.date).getTime() -
-      new Date(a.date).getTime()
-  );
+    const sorted = [...history].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
 
-  let streakCount = 1;
+    let streakCount = 1;
 
-  for (let i = 1; i < sorted.length; i++) {
-    const current = new Date(sorted[i - 1].date);
-    const previous = new Date(sorted[i].date);
+    for (let i = 1; i < sorted.length; i++) {
+      const current = new Date(sorted[i - 1].date);
+      const previous = new Date(sorted[i].date);
 
-    current.setHours(0, 0, 0, 0);
-    previous.setHours(0, 0, 0, 0);
+      current.setHours(0, 0, 0, 0);
+      previous.setHours(0, 0, 0, 0);
 
-    const diff =
-      (current.getTime() - previous.getTime()) /
-      (1000 * 60 * 60 * 24);
+      const diff =
+        (current.getTime() - previous.getTime()) / (1000 * 60 * 60 * 24);
 
-    if (diff === 1) {
-      streakCount++;
-    } else {
-      break;
+      if (diff === 1) {
+        streakCount++;
+      } else {
+        break;
+      }
     }
-  }
 
-  return streakCount;
-}, [history]);
+    return streakCount;
+  }, [history]);
 
   // 📊 estatísticas para o gráfico
-const moodStats = useMemo(() => {
-  let good = 0;
-  let neutral = 0;
-  let bad = 0;
+  const moodStats = useMemo(() => {
+    let good = 0;
+    let neutral = 0;
+    let bad = 0;
 
-  filteredHistory.forEach((m) => {
-    if (m.level >= 4) good++;
-    else if (m.level === 3) neutral++;
-    else bad++;
-  });
+    filteredHistory.forEach((m) => {
+      if (m.level >= 4) good++;
+      else if (m.level === 3) neutral++;
+      else bad++;
+    });
 
-  return { good, neutral, bad };
-}, [filteredHistory]);
+    return { good, neutral, bad };
+  }, [filteredHistory]);
 
   const lineData = useMemo(() => {
-  let chartHistory = [...filteredHistory].sort(
-    (a, b) =>
-      new Date(a.date).getTime() -
-      new Date(b.date).getTime()
-  );
+    let chartHistory = [...filteredHistory].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
 
-  if (period === "30d") {
-    chartHistory = chartHistory.slice(-30);
-  }
+    if (period === "30d") {
+      chartHistory = chartHistory.slice(-30);
+    }
 
-  // "all" continua mostrando tudo
+    // "all" continua mostrando tudo
 
-  return {
-    labels:
-  period === "7d"
-    ? chartHistory.map(item =>
-        new Date(item.date).getDate().toString()
-      )
-    : chartHistory.map(() => ""),
+    return {
+      labels:
+        period === "7d"
+          ? chartHistory.map((item) => new Date(item.date).getDate().toString())
+          : chartHistory.map(() => ""),
 
-    datasets: [
-      {
-        data:
-          chartHistory.length > 0
-            ? chartHistory.map(item => item.level)
-            : [0],
-      },
-    ],
-  };
-}, [filteredHistory, period]);
+      datasets: [
+        {
+          data:
+            chartHistory.length > 0
+              ? chartHistory.map((item) => item.level)
+              : [0],
+        },
+      ],
+    };
+  }, [filteredHistory, period]);
 
   // 💬 mensagem inteligente
   const feedbackMessage = useMemo(() => {
@@ -199,7 +204,7 @@ const moodStats = useMemo(() => {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -214,7 +219,7 @@ const moodStats = useMemo(() => {
   };
 
   console.log("history.length =", history.length);
-console.log("filteredHistory.length =", filteredHistory.length);
+  console.log("filteredHistory.length =", filteredHistory.length);
 
   if (loading) {
     return (
@@ -225,8 +230,12 @@ console.log("filteredHistory.length =", filteredHistory.length);
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <Text style={styles.title}>Dashboard emocional</Text>
+    <ScrollView
+      style={[styles.container, isLight && { backgroundColor: "#EEF2F7" }]}
+    >
+      <Text style={[styles.title, isLight && { color: "#0F172A" }]}>
+        Dashboard emocional
+      </Text>
 
       {/* 🔘 filtro */}
       <View style={styles.filterRow}>
@@ -236,7 +245,7 @@ console.log("filteredHistory.length =", filteredHistory.length);
             onPress={() => setPeriod(p as any)}
             style={[styles.filterButton, period === p && styles.filterActive]}
           >
-            <Text style={styles.filterText}>
+            <Text style={[styles.filterText, isLight && { color: "#475569" }]}>
               {p === "7d" ? "7 dias" : p === "30d" ? "30 dias" : "Todos"}
             </Text>
           </TouchableOpacity>
@@ -260,47 +269,55 @@ console.log("filteredHistory.length =", filteredHistory.length);
         </Animated.View>
       </View>
 
-      <Text style={styles.feedback}>{feedbackMessage}</Text>
-
+      <Text style={[styles.feedback, isLight && { color: "#64748B" }]}>
+        {feedbackMessage}
+      </Text>
       {/* 📊 gráfico */}
       <Animated.View entering={FadeInUp.delay(200)}>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Resumo emocional</Text>
 
           <LineChart
-  data={lineData}
-  width={Math.min(width - 56, 700)} // largura responsiva
-  height={220}
-  fromZero
-  bezier
-  withDots
-  withInnerLines={false}
-  withOuterLines={false}
-  chartConfig={{
-    backgroundGradientFrom: "transparent",
-    backgroundGradientTo: "transparent",
-    decimalPlaces: 0,
-    color: () => "#2dd4bf",
-    labelColor: () => "#94A3B8",
-    propsForBackgroundLines: {
-      stroke: "rgba(255,255,255,0.08)",
-    },
-    propsForDots: {
-      r: "4",
-      strokeWidth: "2",
-      stroke: "#2dd4bf",
-    },
-  }}
-  style={{
-    borderRadius: 12,
-    alignSelf: "center",
-  }}
-/>
+            data={lineData}
+            width={Math.min(width - 56, 700)} // largura responsiva
+            height={220}
+            fromZero
+            bezier
+            withDots
+            withInnerLines={false}
+            withOuterLines={false}
+            chartConfig={{
+              backgroundGradientFrom: "transparent",
+              backgroundGradientTo: "transparent",
+              decimalPlaces: 0,
+              color: () => "#2dd4bf",
+              labelColor: () => (isLight ? "#64748B" : "#94A3B8"),
+              propsForBackgroundLines: {
+                stroke: "rgba(255,255,255,0.08)",
+              },
+              propsForDots: {
+                r: "4",
+                strokeWidth: "2",
+                stroke: "#2dd4bf",
+              },
+            }}
+            style={{
+              borderRadius: 12,
+              alignSelf: "center",
+            }}
+          />
 
           <View style={{ marginTop: 12 }}>
-            <Text style={styles.text}>😊 Bons: {moodStats.good}</Text>
-            <Text style={styles.text}>😐 Neutros: {moodStats.neutral}</Text>
-            <Text style={styles.text}>😞 Ruins: {moodStats.bad}</Text>
+            <Text style={[styles.text, isLight && { color: "#64748B" }]}>
+              😊 Bons: {moodStats.good}
+            </Text>
+            <Text style={[styles.text, isLight && { color: "#64748B" }]}>
+              😐 Neutros: {moodStats.neutral}
+            </Text>
+
+            <Text style={[styles.text, isLight && { color: "#64748B" }]}>
+              😞 Ruins: {moodStats.bad}
+            </Text>
           </View>
         </View>
       </Animated.View>
@@ -315,24 +332,24 @@ console.log("filteredHistory.length =", filteredHistory.length);
 
       {/* 📋 Botões de ação - três botões lado a lado */}
       <View style={styles.buttonRow}>
-        <TouchableOpacity 
-          style={[styles.button, styles.buttonHistory]} 
+        <TouchableOpacity
+          style={[styles.button, styles.buttonHistory]}
           onPress={() => setShowHistory(true)}
         >
           <Text style={styles.buttonText}>📋 Histórico</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.button, styles.buttonReports]} 
-          onPress={() => router.push('/relatorios')}
+
+        <TouchableOpacity
+          style={[styles.button, styles.buttonReports]}
+          onPress={() => router.push("/relatorios")}
         >
           <Text style={styles.buttonReportsText}>📊 Relatórios</Text>
         </TouchableOpacity>
-        
+
         {isAdmin && (
-          <TouchableOpacity 
-            style={[styles.button, styles.buttonAdmin]} 
-            onPress={() => router.push('/auditoria')}
+          <TouchableOpacity
+            style={[styles.button, styles.buttonAdmin]}
+            onPress={() => router.push("/auditoria")}
           >
             <Text style={styles.buttonAdminText}>🔒 Auditoria</Text>
           </TouchableOpacity>
@@ -341,27 +358,28 @@ console.log("filteredHistory.length =", filteredHistory.length);
 
       {/* 📦 Modal de histórico */}
       <Modal visible={showHistory} animationType="slide">
-        <View style={styles.modalContainer}>
+        <View
+          style={[
+            styles.modalContainer,
+            isLight && { backgroundColor: "#122560" },
+          ]}
+        >
+         
           <Text style={styles.title}>Histórico completo</Text>
-
+          
           <ScrollView>
             {filteredHistory.map((item, index) => (
               <View key={item.id || index} style={styles.historyItem}>
                 <View style={styles.historyContent}>
-                  <Text style={styles.text}>
-                    📅 {formatDate(item.date)}
-                  </Text>
-                  <Text style={styles.text}>
-                    😊 Nível: {item.level}/5
-                  </Text>
+                  <Text style={styles.text}>📅 {formatDate(item.date)}</Text>
+                  <Text style={styles.text}>😊 Nível: {item.level}/5</Text>
                   {item.note ? (
-                    <Text style={styles.noteText}>
-                      📝 {item.note}
-                    </Text>
+                    <Text style={styles.noteText}>📝 {item.note}</Text>
                   ) : null}
                   {item.triggers && item.triggers.length > 0 ? (
                     <Text style={styles.triggerText}>
-                      🎯 Gatilhos: {item.triggers.map((t: any) => t.name || t).join(", ")}
+                      🎯 Gatilhos:{" "}
+                      {item.triggers.map((t: any) => t.name || t).join(", ")}
                     </Text>
                   ) : null}
                 </View>
@@ -387,7 +405,6 @@ console.log("filteredHistory.length =", filteredHistory.length);
               </View>
             ))}
           </ScrollView>
-
           <TouchableOpacity
             style={styles.closeButton}
             onPress={() => setShowHistory(false)}
@@ -540,7 +557,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: "#060912",
+    backgroundColor: "#060919",
     padding: 16,
   },
   historyItem: {
@@ -549,7 +566,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.05)",
+    borderBottomColor: "rgba(255,255,255,0.08)",
   },
   historyContent: {
     flex: 1,

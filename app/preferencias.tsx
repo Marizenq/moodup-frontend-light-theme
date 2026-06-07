@@ -8,7 +8,6 @@ export default function Preferencias() {
 
   return (
     <View style={[styles.container, { backgroundColor: background }]}>
-      {" "}
       <Text style={[styles.title, { color: text }]}>Preferências</Text>
       <Text
         style={[
@@ -24,7 +23,7 @@ export default function Preferencias() {
           background === "#020817"
             ? {}
             : {
-                backgroundColor: "#95d4f1",
+                backgroundColor: "#CEE7F2",
                 borderColor: "#C5D3DA",
                 borderWidth: 1,
               },
@@ -32,7 +31,13 @@ export default function Preferencias() {
         ]}
         onPress={() => setPreference("dark")}
       >
-        <Text style={styles.optionText}>
+        <Text
+          style={[
+            styles.optionText,
+            background === "#020817" ? {} : { color: "#0F172A" },
+          ]}
+        >
+          {" "}
           {preference === "dark" ? "◉" : "○"} 🌙 Tema Escuro (padrão)
         </Text>
       </Pressable>
@@ -42,15 +47,20 @@ export default function Preferencias() {
           background === "#020817"
             ? {}
             : {
-                backgroundColor: "#95d4f1",
+                backgroundColor: "#CEE7F2",
                 borderColor: "#C5D3DA",
                 borderWidth: 1,
               },
           preference === "light" && styles.selected,
-        ]}  onPress={() => setPreference("light")}
->
-      
-        <Text style={styles.optionText}>
+        ]}
+        onPress={() => setPreference("light")}
+      >
+        <Text
+          style={[
+            styles.optionText,
+            background === "#020817" ? {} : { color: "#0F172A" },
+          ]}
+        >
           {preference === "light" ? "◉" : "○"} ☀️ Tema Claro
         </Text>
       </Pressable>

@@ -117,9 +117,7 @@ export default function Notificacoes() {
 
   return (
     <View style={[styles.container, { backgroundColor: background }]}>
-<Text style={[styles.title, { color: text }]}>
-  Notificações
-</Text>
+      <Text style={[styles.title, { color: text }]}>Notificações</Text>
       <Text style={styles.subtitle}>
         Escolha quais lembretes deseja receber no futuro.
       </Text>
@@ -158,42 +156,38 @@ export default function Notificacoes() {
 function NotificationItem({ icon, title, description, value, onChange }: any) {
   const background = useThemeColor({}, "background");
   return (
-   <View
-  style={[
-    styles.card,
-    background === "#020817"
-      ? {}
-      : {
-          backgroundColor: "#cee7f2",
-          borderColor: "#7BC3E4",
-        }
-  ]}
->
+    <View
+      style={[
+        styles.card,
+        background === "#020817"
+          ? {}
+          : {
+              backgroundColor: "#cee7f2",
+              borderColor: "#7BC3E4",
+            },
+      ]}
+    >
       <View style={styles.left}>
         <Ionicons name={icon} size={24} color="#2dd4bf" />
 
         <View style={styles.textBox}>
-         <Text
-  style={[
-    styles.cardTitle,
-    background === "#020817"
-      ? {}
-      : { color: "#1E293B" },
-  ]}
->
-  {title}
-</Text>
-
-<Text
-  style={[
-    styles.cardDescription,
-    background === "#020817"
-      ? {}
-      : { color: "#475569" },
-  ]}
->
-  {description}
-</Text>        </View>
+          <Text
+            style={[
+              styles.cardTitle,
+              background === "#020817" ? {} : { color: "#1E293B" },
+            ]}
+          >
+            {title}
+          </Text>
+          <Text
+            style={[
+              styles.cardDescription,
+              background === "#020817" ? {} : { color: "#475569" },
+            ]}
+          >
+            {description}
+          </Text>{" "}
+        </View>
       </View>
 
       <Switch value={value} onValueChange={onChange} />

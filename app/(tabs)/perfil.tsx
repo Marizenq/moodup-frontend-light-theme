@@ -77,6 +77,12 @@ export default function Perfil() {
           onPress={() => router.push("/conta" as any)}
         />
         <MenuItem
+          icon="id-card-outline"
+          label="Informações pessoais"
+          onPress={() => router.push("/informacoes-pessoais" as any)}
+        />
+
+        <MenuItem
           icon="notifications-outline"
           label="Notificações"
           onPress={() => router.push("/notificacoes" as any)}

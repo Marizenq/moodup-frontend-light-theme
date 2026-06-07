@@ -47,6 +47,7 @@ export default function Login() {
       }
 
       await AsyncStorage.setItem(TOKEN_KEY, token);
+      
 
       const user = res.data?.user;
 

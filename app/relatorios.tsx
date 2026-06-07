@@ -1,217 +1,232 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback } from "react";
 import {
-    View,
-    Text,
-    ScrollView,
-    StyleSheet,
-    ActivityIndicator,
-    TouchableOpacity,
-    Alert,
-} from 'react-native';
-import { useFocusEffect } from 'expo-router';
-import { moodApi } from '@/services/api';
-import { Dimensions } from 'react-native';
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
+import { useFocusEffect } from "expo-router";
+import { moodApi } from "@/services/api";
+import { Dimensions } from "react-native";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
-const screenWidth = Dimensions.get('window').width;
+const screenWidth = Dimensions.get("window").width;
 
 export default function Reports() {
-    const [loading, setLoading] = useState(true);
-    const [topTriggers, setTopTriggers] = useState<any[]>([]);
-    const [statsOverview, setStatsOverview] = useState<any>(null);
-    const [period, setPeriod] = useState(30);
+  const background = useThemeColor({}, "background");
+  const isLight = background === "#EEF2F7";
 
-    const loadReports = async () => {
-        try {
-            setLoading(true);
-            
-            let triggersData = [];
-            let statsData = null;
-            
-            if (moodApi.getTopTriggers) {
-                const triggersRes = await moodApi.getTopTriggers(period);
-                triggersData = triggersRes.data?.triggers || [];
-            }
-            
-            if (moodApi.getStatsOverview) {
-                const statsRes = await moodApi.getStatsOverview(period);
-                statsData = statsRes.data;
-                console.log('📊 Stats recebidos:', JSON.stringify(statsData, null, 2));
-            }
-            
-            setTopTriggers(triggersData);
-            setStatsOverview(statsData);
-            
-        } catch (error: any) {
-            console.error('Erro ao carregar relatórios:', error);
-            Alert.alert(
-                'Erro',
-                error?.response?.data?.message || 'Não foi possível carregar os relatórios'
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
+  const [loading, setLoading] = useState(true);
+  const [topTriggers, setTopTriggers] = useState<any[]>([]);
+  const [statsOverview, setStatsOverview] = useState<any>(null);
+  const [period, setPeriod] = useState(30);
 
-    useFocusEffect(
-        useCallback(() => {
-            loadReports();
-        }, [period])
-    );
+  const loadReports = async () => {
+    try {
+      setLoading(true);
 
-    if (loading) {
-        return (
-            <View style={styles.center}>
-                <ActivityIndicator size="large" color="#2dd4bf" />
-            </View>
-        );
+      let triggersData = [];
+      let statsData = null;
+
+      if (moodApi.getTopTriggers) {
+        const triggersRes = await moodApi.getTopTriggers(period);
+        triggersData = triggersRes.data?.triggers || [];
+      }
+
+      if (moodApi.getStatsOverview) {
+        const statsRes = await moodApi.getStatsOverview(period);
+        statsData = statsRes.data;
+        console.log("📊 Stats recebidos:", JSON.stringify(statsData, null, 2));
+      }
+
+      setTopTriggers(triggersData);
+      setStatsOverview(statsData);
+    } catch (error: any) {
+      console.error("Erro ao carregar relatórios:", error);
+      Alert.alert(
+        "Erro",
+        error?.response?.data?.message ||
+          "Não foi possível carregar os relatórios",
+      );
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useFocusEffect(
+    useCallback(() => {
+      loadReports();
+    }, [period]),
+  );
+
+  if (loading) {
     return (
-        <ScrollView style={styles.container}>
-            <Text style={styles.title}>📊 Relatórios</Text>
-            
-            {/* Seletor de período */}
-            <View style={styles.periodRow}>
-                {[7, 30, 90].map(p => (
-                    <TouchableOpacity
-                        key={p}
-                        style={[styles.periodBtn, period === p && styles.periodActive]}
-                        onPress={() => setPeriod(p)}
-                    >
-                        <Text style={styles.periodText}>{p} dias</Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
-            
-            {/* Top Gatilhos */}
-            <View style={styles.card}>
-                <Text style={styles.cardTitle}>🎯 Gatilhos mais frequentes</Text>
-                {topTriggers.length > 0 ? (
-                    topTriggers.map((trigger, idx) => (
-                        <View key={trigger.id || idx} style={styles.triggerItem}>
-                            <Text style={styles.triggerRank}>{idx + 1}º</Text>
-                            <Text style={styles.triggerName}>{trigger.name}</Text>
-                            <Text style={styles.triggerCount}>{trigger.total}x</Text>
-                        </View>
-                    ))
-                ) : (
-                    <Text style={styles.emptyText}>Nenhum gatilho registrado neste período</Text>
-                )}
-            </View>
-            
-            {/* Estatísticas gerais - sem média */}
-            <View style={styles.card}>
-                <Text style={styles.cardTitle}>📈 Visão geral</Text>
-                <View style={styles.statsGrid}>
-                    <View style={styles.statBox}>
-                        <Text style={styles.statBig}>{statsOverview?.total_entries || 0}</Text>
-                        <Text style={styles.statLabel}>registros</Text>
-                    </View>
-                    <View style={styles.statBox}>
-                        <Text style={styles.statBig}>{statsOverview?.days_with_entries || 0}</Text>
-                        <Text style={styles.statLabel}>dias ativos</Text>
-                    </View>
-                </View>
-            </View>
-        </ScrollView>
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#2dd4bf" />
+      </View>
     );
+  }
+
+  return (
+    <ScrollView
+    style={[
+        styles.container,
+        isLight && { backgroundColor: "#122560" }
+    ]}
+>
+      <Text style={styles.title}>📊 Relatórios</Text>
+
+      {/* Seletor de período */}
+      <View style={styles.periodRow}>
+        {[7, 30, 90].map((p) => (
+          <TouchableOpacity
+            key={p}
+            style={[styles.periodBtn, period === p && styles.periodActive]}
+            onPress={() => setPeriod(p)}
+          >
+            <Text style={styles.periodText}>{p} dias</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Top Gatilhos */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>🎯 Gatilhos mais frequentes</Text>
+        {topTriggers.length > 0 ? (
+          topTriggers.map((trigger, idx) => (
+            <View key={trigger.id || idx} style={styles.triggerItem}>
+              <Text style={styles.triggerRank}>{idx + 1}º</Text>
+              <Text style={styles.triggerName}>{trigger.name}</Text>
+              <Text style={styles.triggerCount}>{trigger.total}x</Text>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.emptyText}>
+            Nenhum gatilho registrado neste período
+          </Text>
+        )}
+      </View>
+
+      {/* Estatísticas gerais - sem média */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>📈 Visão geral</Text>
+        <View style={styles.statsGrid}>
+          <View style={styles.statBox}>
+            <Text style={styles.statBig}>
+              {statsOverview?.total_entries || 0}
+            </Text>
+            <Text style={styles.statLabel}>registros</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statBig}>
+              {statsOverview?.days_with_entries || 0}
+            </Text>
+            <Text style={styles.statLabel}>dias ativos</Text>
+          </View>
+        </View>
+      </View>
+    </ScrollView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#060912',
-        padding: 16,
-    },
-    center: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#060912',
-    },
-    title: {
-        color: '#E2E8F0',
-        fontSize: 28,
-        fontWeight: '800',
-        marginBottom: 16,
-    },
-    periodRow: {
-        flexDirection: 'row',
-        gap: 10,
-        marginBottom: 20,
-    },
-    periodBtn: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.05)',
-    },
-    periodActive: {
-        backgroundColor: 'rgba(45,212,191,0.25)',
-    },
-    periodText: {
-        color: '#CBD5F5',
-    },
-    card: {
-        backgroundColor: 'rgba(255,255,255,0.03)',
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 16,
-    },
-    cardTitle: {
-        color: '#2dd4bf',
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 16,
-    },
-    triggerItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.05)',
-    },
-    triggerRank: {
-        color: '#2dd4bf',
-        fontSize: 16,
-        fontWeight: 'bold',
-        width: 40,
-    },
-    triggerName: {
-        color: '#CBD5E1',
-        fontSize: 16,
-        flex: 1,
-    },
-    triggerCount: {
-        color: '#94A3B8',
-        fontSize: 14,
-        fontWeight: 'bold',
-    },
-    emptyText: {
-        color: '#94A3B8',
-        fontSize: 14,
-        textAlign: 'center',
-        paddingVertical: 20,
-    },
-    statsGrid: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    statBox: {
-        flex: 1,
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        borderRadius: 12,
-        padding: 16,
-        alignItems: 'center',
-    },
-    statBig: {
-        color: '#2dd4bf',
-        fontSize: 28,
-        fontWeight: 'bold',
-    },
-    statLabel: {
-        color: '#94A3B8',
-        fontSize: 12,
-        marginTop: 4,
-    },
+  container: {
+    flex: 1,
+    backgroundColor: "#060912",
+    padding: 16,
+  },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#060912",
+  },
+  title: {
+    color: "#E2E8F0",
+    fontSize: 28,
+    fontWeight: "800",
+    marginBottom: 16,
+  },
+  periodRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 20,
+  },
+  periodBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  periodActive: {
+    backgroundColor: "rgba(45,212,191,0.25)",
+  },
+  periodText: {
+    color: "#CBD5F5",
+  },
+  card: {
+    backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  cardTitle: {
+    color: "#2dd4bf",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 16,
+  },
+  triggerItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.05)",
+  },
+  triggerRank: {
+    color: "#2dd4bf",
+    fontSize: 16,
+    fontWeight: "bold",
+    width: 40,
+  },
+  triggerName: {
+    color: "#CBD5E1",
+    fontSize: 16,
+    flex: 1,
+  },
+  triggerCount: {
+    color: "#94A3B8",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  emptyText: {
+    color: "#94A3B8",
+    fontSize: 14,
+    textAlign: "center",
+    paddingVertical: 20,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  statBox: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+  },
+  statBig: {
+    color: "#2dd4bf",
+    fontSize: 28,
+    fontWeight: "bold",
+  },
+  statLabel: {
+    color: "#94A3B8",
+    fontSize: 12,
+    marginTop: 4,
+  },
 });
