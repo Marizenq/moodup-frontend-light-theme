@@ -5,7 +5,6 @@ import { moodApi, api } from "@/services/api";
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   Modal,
   ScrollView,
   StyleSheet,
@@ -13,16 +12,17 @@ import {
   TouchableOpacity,
   View,
   Alert,
+  useWindowDimensions,
 } from "react-native";
 
-import { BarChart } from "react-native-chart-kit";
+import { LineChart } from "react-native-chart-kit";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { useFocusEffect } from "expo-router";
 import { router } from "expo-router";
 
-const screenWidth = Dimensions.get("window").width;
 
 export default function Dashboard() {
+  const { width } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState<any[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -36,6 +36,8 @@ export default function Dashboard() {
   async function loadData() {
     try {
       const historyResponse = await moodApi.getAll();
+      console.log(historyResponse.data);
+console.log(historyResponse.data.data?.length);
 
       let historyData = [];
       if (historyResponse.data?.data && Array.isArray(historyResponse.data.data)) {
@@ -89,58 +91,84 @@ export default function Dashboard() {
     });
   }, [history, period]);
 
-  // 🔥 streak
   const streak = useMemo(() => {
-    if (!history.length) return 0;
-    
-    const sorted = [...history].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+  if (!history.length) return 0;
 
-    let streakCount = 0;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  const sorted = [...history].sort(
+    (a, b) =>
+      new Date(b.date).getTime() -
+      new Date(a.date).getTime()
+  );
 
-    for (let i = 0; i < sorted.length; i++) {
-      const date = new Date(sorted[i].date);
-      date.setHours(0, 0, 0, 0);
-      
-      const diff = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-      
-      if (diff === streakCount) {
-        streakCount++;
-      } else {
-        break;
-      }
+  let streakCount = 1;
+
+  for (let i = 1; i < sorted.length; i++) {
+    const current = new Date(sorted[i - 1].date);
+    const previous = new Date(sorted[i].date);
+
+    current.setHours(0, 0, 0, 0);
+    previous.setHours(0, 0, 0, 0);
+
+    const diff =
+      (current.getTime() - previous.getTime()) /
+      (1000 * 60 * 60 * 24);
+
+    if (diff === 1) {
+      streakCount++;
+    } else {
+      break;
     }
+  }
 
-    return streakCount;
-  }, [history]);
+  return streakCount;
+}, [history]);
 
   // 📊 estatísticas para o gráfico
-  const moodStats = useMemo(() => {
-    let good = 0;
-    let neutral = 0;
-    let bad = 0;
+const moodStats = useMemo(() => {
+  let good = 0;
+  let neutral = 0;
+  let bad = 0;
 
-    filteredHistory.forEach((m) => {
-      if (m.level >= 4) good++;
-      else if (m.level === 3) neutral++;
-      else bad++;
-    });
+  filteredHistory.forEach((m) => {
+    if (m.level >= 4) good++;
+    else if (m.level === 3) neutral++;
+    else bad++;
+  });
 
-    return { good, neutral, bad };
-  }, [filteredHistory]);
+  return { good, neutral, bad };
+}, [filteredHistory]);
 
-  // 📊 gráfico de barras
-  const barData = {
-    labels: ["Ruim", "Neutro", "Bom"],
+  const lineData = useMemo(() => {
+  let chartHistory = [...filteredHistory].sort(
+    (a, b) =>
+      new Date(a.date).getTime() -
+      new Date(b.date).getTime()
+  );
+
+  if (period === "30d") {
+    chartHistory = chartHistory.slice(-30);
+  }
+
+  // "all" continua mostrando tudo
+
+  return {
+    labels:
+  period === "7d"
+    ? chartHistory.map(item =>
+        new Date(item.date).getDate().toString()
+      )
+    : chartHistory.map(() => ""),
+
     datasets: [
       {
-        data: [moodStats.bad, moodStats.neutral, moodStats.good],
+        data:
+          chartHistory.length > 0
+            ? chartHistory.map(item => item.level)
+            : [0],
       },
     ],
   };
+}, [filteredHistory, period]);
 
   // 💬 mensagem inteligente
   const feedbackMessage = useMemo(() => {
@@ -184,6 +212,9 @@ export default function Dashboard() {
     const date = new Date(dateString);
     return date.toLocaleDateString("pt-BR");
   };
+
+  console.log("history.length =", history.length);
+console.log("filteredHistory.length =", filteredHistory.length);
 
   if (loading) {
     return (
@@ -236,25 +267,35 @@ export default function Dashboard() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Resumo emocional</Text>
 
-          <BarChart
-            data={barData}
-            width={screenWidth - 40}
-            height={180}
-            fromZero
-            yAxisLabel=""
-            yAxisSuffix=""
-            chartConfig={{
-              backgroundGradientFrom: "transparent",
-              backgroundGradientTo: "transparent",
-              decimalPlaces: 0,
-              color: () => "#2dd4bf",
-              labelColor: () => "#94A3B8",
-              propsForBackgroundLines: {
-                stroke: "transparent",
-              },
-            }}
-            style={{ borderRadius: 12 }}
-          />
+          <LineChart
+  data={lineData}
+  width={Math.min(width - 56, 700)} // largura responsiva
+  height={220}
+  fromZero
+  bezier
+  withDots
+  withInnerLines={false}
+  withOuterLines={false}
+  chartConfig={{
+    backgroundGradientFrom: "transparent",
+    backgroundGradientTo: "transparent",
+    decimalPlaces: 0,
+    color: () => "#2dd4bf",
+    labelColor: () => "#94A3B8",
+    propsForBackgroundLines: {
+      stroke: "rgba(255,255,255,0.08)",
+    },
+    propsForDots: {
+      r: "4",
+      strokeWidth: "2",
+      stroke: "#2dd4bf",
+    },
+  }}
+  style={{
+    borderRadius: 12,
+    alignSelf: "center",
+  }}
+/>
 
           <View style={{ marginTop: 12 }}>
             <Text style={styles.text}>😊 Bons: {moodStats.good}</Text>
@@ -462,12 +503,12 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 7,
     paddingHorizontal: 8,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 48,
+    minHeight: 44,
   },
   buttonHistory: {
     backgroundColor: "#2dd4bf",

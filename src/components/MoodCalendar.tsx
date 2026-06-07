@@ -7,7 +7,6 @@ import {
   Modal,
   Pressable,
   useWindowDimensions,
-  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,11 +21,9 @@ export default function MoodCalendar({ data }: MoodCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   
   const getDaySize = () => {
-    if (Platform.OS === 'web') {
-      return 46;
-    }
-    return (width - 80) / 7;
-  };
+  const availableWidth = Math.min(width - 56, 380);
+  return (availableWidth - (7 * 6)) / 7; // 6px margin entre os dias
+};
   
   const DAY_SIZE = getDaySize();
   const COLUMNS = 7;
@@ -80,7 +77,7 @@ export default function MoodCalendar({ data }: MoodCalendarProps) {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDayOfMonth = new Date(year, month, 1).getDay();
+    const firstDayOfMonth = (new Date(year, month, 1).getDay() + 6) % 7;
     
     const days = [];
     
@@ -107,7 +104,7 @@ export default function MoodCalendar({ data }: MoodCalendarProps) {
   
   const days = getDaysInMonth();
   const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-  const weekDays = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+  const weekDays = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
   
   const chunkArray = (arr: any[], size: number) => {
     const chunks = [];
@@ -276,8 +273,10 @@ const styles = StyleSheet.create({
   },
   weekDaysRow: {
     flexDirection: 'row',
-    marginBottom: 12,
-    justifyContent: 'flex-start',
+    marginBottom: 15,
+    justifyContent: 'space-between',
+    paddingHorizontal: 6,
+    
   },
   weekDayCell: {
     alignItems: 'center',
@@ -290,17 +289,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   calendarContainer: {
-    flex: 1,
-  },
-  calendarRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-  },
+  alignSelf: 'center',
+},
+
+calendarRow: {
+  flexDirection: 'row',
+},
   emptyDay: {
-    margin: 3,
+    margin: 2,
   },
   dayPressable: {
-    margin: 3,
+    margin: 2,
   },
   dayGradient: {
     margin: 0,
