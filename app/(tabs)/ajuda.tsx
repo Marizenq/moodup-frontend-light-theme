@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { useThemeColor } from "@/hooks/use-theme-color";
 
-
 type Mood = {
   id: number;
   level: number;
@@ -136,7 +135,7 @@ export default function AjudaScreen() {
             s.sectionTitle,
             {
               color: background === "#020817" ? "#E5E7EB" : "#334155",
-            }
+            },
           ]}
         >
           {title}
@@ -152,7 +151,7 @@ export default function AjudaScreen() {
                   : {
                       backgroundColor: "#CEE7F2",
                       borderColor: "#C5D3DA",
-                    }
+                    },
               ]}
             >
               <Text
@@ -231,8 +230,18 @@ export default function AjudaScreen() {
         value={search}
         onChangeText={setSearch}
         placeholder="Buscar recurso..."
-        placeholderTextColor="#6B7280"
-        style={s.input}
+        placeholderTextColor={background === "#020817" ? "#6B7280" : "#64748B"}
+        style={[
+          s.input,
+
+          background === "#020817"
+            ? {}
+            : {
+                backgroundColor: "#DCE7EC",
+                borderColor: "#C5D3DA",
+                color: "#1E293B",
+              },
+        ]}
       />
 
       {/* 🎯 FILTROS */}

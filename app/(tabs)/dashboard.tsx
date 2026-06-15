@@ -1,8 +1,7 @@
 import MoodCalendar from "@/components/MoodCalendar";
 import EditMoodModal from "@/components/EditMoodModal";
 import { moodApi, api } from "@/services/api";
-
-import React, { useCallback, useMemo, useState, useEffect } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -13,8 +12,8 @@ import {
   View,
   Alert,
   useWindowDimensions,
+  TextInput,
 } from "react-native";
-
 import { LineChart } from "react-native-chart-kit";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { useFocusEffect } from "expo-router";
@@ -23,29 +22,52 @@ import { useThemeColor } from "@/hooks/use-theme-color";
 
 export default function Dashboard() {
   const { width } = useWindowDimensions();
-
   const background = useThemeColor({}, "background");
-  const textColor = useThemeColor({}, "text");
-
   const isLight = background === "#EEF2F7";
 
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState<any[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
-
   const [showHistory, setShowHistory] = useState(false);
   const [period, setPeriod] = useState<"7d" | "30d" | "all">("7d");
-
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedMood, setSelectedMood] = useState<any>(null);
+  const [historySearch, setHistorySearch] = useState("");
+  const [expiredModalVisible, setExpiredModalVisible] = useState(false);
+  const [expiredMessage, setExpiredMessage] = useState("");
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [moodToDelete, setMoodToDelete] = useState<any>(null);
+
+  const getMoodLabel = (level: number) => {
+    if (level === 1) return "😔 Muito triste";
+    if (level === 2) return "😕 Triste";
+    if (level === 3) return "😐 Neutro";
+    if (level === 4) return "😊 Feliz";
+    if (level === 5) return "😁 Muito feliz";
+    return "🙂 Registro emocional";
+  };
+
+  const formatDate = (dateString: string) => {
+    const onlyDate = dateString.split("T")[0];
+    const [year, month, day] = onlyDate.split("-");
+    return `${day}/${month}/${year}`;
+  };
+
+  const canEditOrDelete = (moodDate: string) => {
+    const createdAt = new Date(moodDate);
+    const now = new Date();
+
+    const diffHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+
+    return diffHours <= 24;
+  };
 
   async function loadData() {
     try {
       const historyResponse = await moodApi.getAll();
-      console.log(historyResponse.data);
-      console.log(historyResponse.data.data?.length);
 
       let historyData = [];
+
       if (
         historyResponse.data?.data &&
         Array.isArray(historyResponse.data.data)
@@ -53,11 +75,11 @@ export default function Dashboard() {
         historyData = historyResponse.data.data;
       } else if (Array.isArray(historyResponse.data)) {
         historyData = historyResponse.data;
-      } else {
-        historyData = [];
       }
 
       setHistory(historyData);
+
+      console.log("Primeiro Registro:", historyData[0]);
     } catch (error: any) {
       console.log("❌ ERRO DASH:", error?.response?.data || error.message);
       Alert.alert("Erro", "Não foi possível carregar os dados");
@@ -69,27 +91,22 @@ export default function Dashboard() {
       const response = await api.get("/me");
       setIsAdmin(response.data?.user?.role === "admin");
     } catch (error: any) {
-      console.error(
-        "❌ Erro ao verificar admin:",
-        error?.response?.data || error.message,
-      );
       setIsAdmin(false);
     }
   };
 
   useFocusEffect(
     useCallback(() => {
-      // 🔥 CARREGAMENTO PARALELO - mais rápido!
       const loadAll = async () => {
         setLoading(true);
         await Promise.all([loadData(), checkAdminStatus()]);
         setLoading(false);
       };
+
       loadAll();
     }, []),
   );
 
-  // 🔎 filtro por período
   const filteredHistory = useMemo(() => {
     const now = new Date();
 
@@ -102,6 +119,33 @@ export default function Dashboard() {
       return true;
     });
   }, [history, period]);
+
+  const searchedHistory = useMemo(() => {
+    const search = historySearch.trim().toLowerCase();
+
+    if (!search) return filteredHistory;
+
+    return filteredHistory.filter((item) => {
+      const title = String(item.title || "").toLowerCase();
+      const note = String(item.note || "").toLowerCase();
+      const date = formatDate(item.date).toLowerCase();
+      const level = getMoodLabel(item.level).toLowerCase();
+
+      const triggers =
+        item.triggers
+          ?.map((t: any) => t.name || t)
+          .join(" ")
+          .toLowerCase() || "";
+
+      return (
+        title.includes(search) ||
+        note.includes(search) ||
+        date.includes(search) ||
+        level.includes(search) ||
+        triggers.includes(search)
+      );
+    });
+  }, [filteredHistory, historySearch]);
 
   const streak = useMemo(() => {
     if (!history.length) return 0;
@@ -132,7 +176,6 @@ export default function Dashboard() {
     return streakCount;
   }, [history]);
 
-  // 📊 estatísticas para o gráfico
   const moodStats = useMemo(() => {
     let good = 0;
     let neutral = 0;
@@ -156,14 +199,11 @@ export default function Dashboard() {
       chartHistory = chartHistory.slice(-30);
     }
 
-    // "all" continua mostrando tudo
-
     return {
       labels:
         period === "7d"
-          ? chartHistory.map((item) => new Date(item.date).getDate().toString())
+          ? chartHistory.map((item) => formatDate(item.date).split("/")[0])
           : chartHistory.map(() => ""),
-
       datasets: [
         {
           data:
@@ -175,7 +215,6 @@ export default function Dashboard() {
     };
   }, [filteredHistory, period]);
 
-  // 💬 mensagem inteligente
   const feedbackMessage = useMemo(() => {
     if (moodStats.good > moodStats.bad)
       return "🎉 Você teve mais dias bons essa semana!";
@@ -184,42 +223,33 @@ export default function Dashboard() {
     return "⚖️ Sua semana foi equilibrada.";
   }, [moodStats]);
 
-  const handleDelete = (id: number) => {
-    Alert.alert(
-      "Confirmar exclusão",
-      "Tem certeza que deseja excluir este registro?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Excluir",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await moodApi.delete(id);
-              await loadData();
-              Alert.alert("Sucesso", "Registro excluído com sucesso!");
-            } catch (error: any) {
-              console.error("Erro ao deletar:", error);
-              Alert.alert("Erro", "Não foi possível excluir o registro");
-            }
-          },
-        },
-      ],
-    );
+  const openDeleteModal = (mood: any) => {
+    setMoodToDelete(mood);
+    setDeleteModalVisible(true);
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModalVisible(false);
+    setMoodToDelete(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!moodToDelete) return;
+
+    try {
+      await moodApi.delete(moodToDelete.id);
+      await loadData();
+      closeDeleteModal();
+    } catch (error: any) {
+      console.log("DELETE ERRO:", error?.response?.data || error.message);
+      Alert.alert("Erro", "Não foi possível excluir o registro");
+    }
   };
 
   const handleEdit = (mood: any) => {
     setSelectedMood(mood);
     setEditModalVisible(true);
   };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("pt-BR");
-  };
-
-  console.log("history.length =", history.length);
-  console.log("filteredHistory.length =", filteredHistory.length);
 
   if (loading) {
     return (
@@ -237,7 +267,6 @@ export default function Dashboard() {
         Dashboard emocional
       </Text>
 
-      {/* 🔘 filtro */}
       <View style={styles.filterRow}>
         {["7d", "30d", "all"].map((p) => (
           <TouchableOpacity
@@ -252,17 +281,34 @@ export default function Dashboard() {
         ))}
       </View>
 
-      {/* 🔥 métricas - apenas Registros e Streak */}
       <View style={styles.row}>
         <Animated.View entering={FadeInUp}>
-          <View style={styles.metricCard}>
+          <View
+            style={[
+              styles.metricCard,
+              isLight && {
+                backgroundColor: "#D4E0E6",
+                borderWidth: 1,
+                borderColor: "#B8CAD3",
+              },
+            ]}
+          >
             <Text style={styles.metricValue}>{filteredHistory.length}</Text>
             <Text style={styles.metricLabel}>Registros</Text>
           </View>
         </Animated.View>
 
         <Animated.View entering={FadeInUp.delay(100)}>
-          <View style={styles.metricCard}>
+          <View
+            style={[
+              styles.metricCard,
+              isLight && {
+                backgroundColor: "#D4E0E6",
+                borderWidth: 1,
+                borderColor: "#B8CAD3",
+              },
+            ]}
+          >
             <Text style={styles.metricValue}>{streak}</Text>
             <Text style={styles.metricLabel}>Streak 🔥</Text>
           </View>
@@ -272,14 +318,23 @@ export default function Dashboard() {
       <Text style={[styles.feedback, isLight && { color: "#64748B" }]}>
         {feedbackMessage}
       </Text>
-      {/* 📊 gráfico */}
-      <Animated.View entering={FadeInUp.delay(200)}>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Resumo emocional</Text>
 
+      <Animated.View entering={FadeInUp.delay(200)}>
+        <View
+          style={[
+            styles.card,
+            isLight && {
+              backgroundColor: "#D4E0E6",
+              borderWidth: 1,
+              borderColor: "#B8CAD3",
+            },
+          ]}
+        >
+          {" "}
+          <Text style={styles.cardTitle}>Resumo emocional</Text>
           <LineChart
             data={lineData}
-            width={Math.min(width - 56, 700)} // largura responsiva
+            width={Math.min(width - 56, 700)}
             height={220}
             fromZero
             bezier
@@ -292,21 +347,14 @@ export default function Dashboard() {
               decimalPlaces: 0,
               color: () => "#2dd4bf",
               labelColor: () => (isLight ? "#64748B" : "#94A3B8"),
-              propsForBackgroundLines: {
-                stroke: "rgba(255,255,255,0.08)",
-              },
               propsForDots: {
                 r: "4",
                 strokeWidth: "2",
                 stroke: "#2dd4bf",
               },
             }}
-            style={{
-              borderRadius: 12,
-              alignSelf: "center",
-            }}
+            style={{ borderRadius: 12, alignSelf: "center" }}
           />
-
           <View style={{ marginTop: 12 }}>
             <Text style={[styles.text, isLight && { color: "#64748B" }]}>
               😊 Bons: {moodStats.good}
@@ -314,7 +362,6 @@ export default function Dashboard() {
             <Text style={[styles.text, isLight && { color: "#64748B" }]}>
               😐 Neutros: {moodStats.neutral}
             </Text>
-
             <Text style={[styles.text, isLight && { color: "#64748B" }]}>
               😞 Ruins: {moodStats.bad}
             </Text>
@@ -322,15 +369,22 @@ export default function Dashboard() {
         </View>
       </Animated.View>
 
-      {/* 📅 calendário */}
       <Animated.View entering={FadeInUp.delay(300)}>
-        <View style={styles.card}>
+        <View
+          style={[
+            styles.card,
+            isLight && {
+              backgroundColor: "#D4E0E6",
+              borderWidth: 1,
+              borderColor: "#B8CAD3",
+            },
+          ]}
+        >
           <Text style={styles.cardTitle}>Seu mês</Text>
           <MoodCalendar data={filteredHistory} />
         </View>
       </Animated.View>
 
-      {/* 📋 Botões de ação - três botões lado a lado */}
       <View style={styles.buttonRow}>
         <TouchableOpacity
           style={[styles.button, styles.buttonHistory]}
@@ -356,55 +410,162 @@ export default function Dashboard() {
         )}
       </View>
 
-      {/* 📦 Modal de histórico */}
       <Modal visible={showHistory} animationType="slide">
         <View
           style={[
             styles.modalContainer,
-            isLight && { backgroundColor: "#122560" },
+            isLight && { backgroundColor: "#C7D7DF" },
           ]}
         >
-         
-          <Text style={styles.title}>Histórico completo</Text>
-          
+          <Text style={[styles.title, isLight && { color: "#334155" }]}>
+            Histórico emocional
+          </Text>
+
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar por data, título, gatilho ou observação..."
+            placeholderTextColor="#64748B"
+            value={historySearch}
+            onChangeText={setHistorySearch}
+          />
+
           <ScrollView>
-            {filteredHistory.map((item, index) => (
-              <View key={item.id || index} style={styles.historyItem}>
-                <View style={styles.historyContent}>
-                  <Text style={styles.text}>📅 {formatDate(item.date)}</Text>
-                  <Text style={styles.text}>😊 Nível: {item.level}/5</Text>
-                  {item.note ? (
-                    <Text style={styles.noteText}>📝 {item.note}</Text>
-                  ) : null}
-                  {item.triggers && item.triggers.length > 0 ? (
-                    <Text style={styles.triggerText}>
-                      🎯 Gatilhos:{" "}
-                      {item.triggers.map((t: any) => t.name || t).join(", ")}
+            {searchedHistory.length > 0 ? (
+              searchedHistory.map((item, index) => (
+                <View
+                  key={item.id || index}
+                  style={[
+                    styles.historyItem,
+                    isLight && {
+                      backgroundColor: "#D4E0E6",
+                      borderWidth: 1,
+                      borderColor: "#B8CAD3",
+                    },
+                  ]}
+                >
+                  <View style={styles.historyContent}>
+                    <Text
+                      style={[
+                        styles.historyTitle,
+                        isLight && { color: "#334155" },
+                      ]}
+                    >
+                      📌 {item.title || "Registro emocional"}
                     </Text>
-                  ) : null}
-                </View>
 
-                <View style={styles.actionButtons}>
-                  <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={() => {
-                      setShowHistory(false);
-                      handleEdit(item);
-                    }}
-                  >
-                    <Text style={styles.actionText}>✏️</Text>
-                  </TouchableOpacity>
+                    <Text
+                      style={[styles.text, isLight && { color: "#64748B" }]}
+                    >
+                      📅 {formatDate(item.date)}
+                    </Text>
 
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => handleDelete(item.id)}
-                  >
-                    <Text style={styles.actionText}>🗑️</Text>
-                  </TouchableOpacity>
+                    {item.triggers && item.triggers.length > 0 ? (
+                      <Text style={styles.triggerText}>
+                        🎯 Gatilhos:{" "}
+                        {item.triggers.map((t: any) => t.name || t).join(", ")}
+                      </Text>
+                    ) : (
+                      <Text style={styles.emptyInfoText}>
+                        🎯 Nenhum gatilho informado
+                      </Text>
+                    )}
+
+                    {item.note ? (
+                      <Text
+                        style={[
+                          styles.noteText,
+                          isLight && { color: "#64748B" },
+                        ]}
+                      >
+                        📝 {item.note}
+                      </Text>
+                    ) : (
+                      <Text style={styles.emptyInfoText}>
+                        📝 Sem observação
+                      </Text>
+                    )}
+
+                    <Text
+                      style={[
+                        styles.intensityText,
+                        isLight && { color: "#64748B" },
+                      ]}
+                    >
+                      ⭐ Intensidade: {item.level}/5
+                    </Text>
+
+                    <Text
+                      style={{
+                        color: !canEditOrDelete(item.created_at)
+                          ? "#ef4444"
+                          : "#2dd4bf",
+                        marginTop: 6,
+                        fontWeight: "600",
+                        fontSize: 12,
+                      }}
+                    >
+                      {!canEditOrDelete(item.created_at)
+                        ? "🔒 Período de edição encerrado"
+                        : "⏳ Editável por 24 horas"}
+                    </Text>
+                  </View>
+                  <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                      style={[
+                        styles.editButton,
+                        !canEditOrDelete(item.created_at) && {
+                          opacity: 0.4,
+                        },
+                      ]}
+                      onPress={() => {
+                        if (!canEditOrDelete(item.created_at || item.date)) {
+                          setExpiredMessage(
+                            "Este registro só pode ser editado nas primeiras 24 horas após sua criação.",
+                          );
+
+                          setExpiredModalVisible(true);
+                          return;
+                        }
+
+                        setShowHistory(false);
+                        handleEdit(item);
+                      }}
+                    >
+                      <Text style={styles.actionText}>✏️</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.deleteButton,
+                        !canEditOrDelete(item.created_at) && {
+                          opacity: 0.4,
+                        },
+                      ]}
+                      onPress={() => {
+                        if (!canEditOrDelete(item.created_at || item.date)) {
+                          setExpiredMessage(
+                            "Este registro só pode ser excluído nas primeiras 24 horas após sua criação.",
+                          );
+
+                          setExpiredModalVisible(true);
+                          return;
+                        }
+
+                        openDeleteModal(item);
+                      }}
+                    >
+                      <Text style={styles.actionText}>🗑️</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            ))}
+              ))
+            ) : (
+              <Text style={styles.emptyHistoryText}>
+                Nenhum registro encontrado.
+              </Text>
+            )}
           </ScrollView>
+
           <TouchableOpacity
             style={styles.closeButton}
             onPress={() => setShowHistory(false)}
@@ -414,7 +575,51 @@ export default function Dashboard() {
         </View>
       </Modal>
 
-      {/* Modal de edição */}
+      <Modal visible={deleteModalVisible} transparent animationType="fade">
+        <View style={styles.overlay}>
+          <View style={styles.confirmBox}>
+            <Text style={styles.confirmTitle}>Excluir registro?</Text>
+
+            <Text style={styles.confirmText}>
+              Essa ação vai apagar este registro emocional. Deseja continuar?
+            </Text>
+
+            <View style={styles.confirmButtons}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={closeDeleteModal}
+              >
+                <Text style={styles.cancelText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.deleteConfirmBtn}
+                onPress={confirmDelete}
+              >
+                <Text style={styles.deleteConfirmText}>Excluir</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={expiredModalVisible} transparent animationType="fade">
+        <View style={styles.overlay}>
+          <View style={styles.confirmBox}>
+            <Text style={styles.confirmTitle}>🔒 Prazo expirado</Text>
+
+            <Text style={styles.confirmText}>{expiredMessage}</Text>
+
+            <TouchableOpacity
+              style={styles.expiredButton}
+              onPress={() => setExpiredModalVisible(false)}
+            >
+              <Text style={styles.expiredButtonText}>Entendi</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <EditMoodModal
         visible={editModalVisible}
         mood={selectedMood}
@@ -440,6 +645,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#060912",
   },
   title: {
     color: "#E2E8F0",
@@ -501,16 +707,8 @@ const styles = StyleSheet.create({
   },
   text: {
     color: "#CBD5E1",
-  },
-  noteText: {
-    color: "#94A3B8",
-    fontSize: 12,
-    marginTop: 4,
-  },
-  triggerText: {
-    color: "#2dd4bf",
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 13,
+    marginTop: 5,
   },
   buttonRow: {
     flexDirection: "row",
@@ -560,19 +758,76 @@ const styles = StyleSheet.create({
     backgroundColor: "#060919",
     padding: 16,
   },
+  searchInput: {
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(45,212,191,0.25)",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: "#E2E8F0",
+    fontSize: 14,
+    marginBottom: 14,
+  },
   historyItem: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.08)",
+    alignItems: "flex-start",
+    padding: 14,
+    marginBottom: 12,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
   },
   historyContent: {
     flex: 1,
+    paddingRight: 10,
+  },
+  historyTitle: {
+    color: "#E2E8F0",
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 6,
+  },
+  levelText: {
+    color: "#2dd4bf",
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  noteText: {
+    color: "#CBD5E1",
+    fontSize: 13,
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  triggerText: {
+    color: "#2dd4bf",
+    fontSize: 13,
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  emptyInfoText: {
+    color: "#64748B",
+    fontSize: 13,
+    marginTop: 8,
+    fontStyle: "italic",
+  },
+  intensityText: {
+    color: "#94A3B8",
+    fontSize: 13,
+    marginTop: 8,
+    fontWeight: "600",
+  },
+  emptyHistoryText: {
+    color: "#94A3B8",
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 40,
   },
   actionButtons: {
-    flexDirection: "row",
+    flexDirection: "column",
     gap: 8,
   },
   editButton: {
@@ -594,5 +849,72 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: "#a03333",
     alignItems: "center",
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  confirmBox: {
+    width: "100%",
+    maxWidth: 360,
+    backgroundColor: "#111827",
+    borderRadius: 24,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  confirmTitle: {
+    color: "#F8FAFC",
+    fontSize: 24,
+    fontWeight: "800",
+    marginBottom: 12,
+  },
+  confirmText: {
+    color: "#CBD5E1",
+    fontSize: 16,
+    lineHeight: 22,
+    marginBottom: 22,
+  },
+  confirmButtons: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 12,
+  },
+  cancelBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+  },
+  cancelText: {
+    color: "#E2E8F0",
+    fontWeight: "700",
+  },
+  deleteConfirmBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    backgroundColor: "#ef4444",
+  },
+  deleteConfirmText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+  },
+
+  expiredButton: {
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: "#2dd4bf",
+    alignItems: "center",
+  },
+
+  expiredButtonText: {
+    color: "#02120F",
+    fontWeight: "800",
   },
 });

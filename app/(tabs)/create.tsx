@@ -272,7 +272,18 @@ export default function CreateMood() {
                     <Pressable
                       key={m.key}
                       onPress={() => setMoodKey(m.key)}
-                      style={[s.emojiBtn, active && s.emojiBtnActive]}
+                      style={[
+                        s.emojiBtn,
+
+                        background === "#020817"
+                          ? {}
+                          : {
+                              backgroundColor: "#DCE7EC",
+                              borderColor: "#C5D3DA",
+                            },
+
+                        active && s.emojiBtnActive,
+                      ]}
                     >
                       <Text style={s.emoji}>{m.emoji}</Text>
                     </Pressable>
@@ -313,9 +324,32 @@ export default function CreateMood() {
                     <Pressable
                       key={n}
                       onPress={() => setLevel(n as any)}
-                      style={[s.levelBtn, active && s.levelBtnActive]}
+                      style={[
+                        s.levelBtn,
+
+                        background === "#020817"
+                          ? {}
+                          : {
+                              backgroundColor: "#DCE7EC",
+                              borderColor: "#C5D3DA",
+                            },
+
+                        active && s.levelBtnActive,
+                      ]}
                     >
-                      <Text style={[s.levelText, active && s.levelTextActive]}>
+                      <Text
+                        style={[
+                          s.levelText,
+
+                          background === "#020817"
+                            ? {}
+                            : {
+                                color: "#1E293B",
+                              },
+
+                          active && s.levelTextActive,
+                        ]}
+                      >
                         {n}
                       </Text>
                     </Pressable>
@@ -423,12 +457,11 @@ export default function CreateMood() {
               )}
 
               <Text style={[s.label, { color: textSecondary }]}>
-                Observação (opcional)
+                Conte mais sobre como foi seu dia...
               </Text>
               <TextInput
                 value={note}
                 onChangeText={setNote}
-                placeholder="O que aconteceu hoje?"
                 placeholderTextColor="#6B7280"
                 style={[
                   s.input,
@@ -573,6 +606,7 @@ const s = StyleSheet.create({
   },
   emojiBtnActive: {
     borderColor: "#2dd4bf",
+    backgroundColor: "rgba(45,212,191,.15)",
   },
   emoji: {
     fontSize: 26,

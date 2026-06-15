@@ -23,7 +23,7 @@ export default function Preferencias() {
           background === "#020817"
             ? {}
             : {
-                backgroundColor: "#CEE7F2",
+                backgroundColor: "#95d4f1",
                 borderColor: "#C5D3DA",
                 borderWidth: 1,
               },
@@ -31,13 +31,7 @@ export default function Preferencias() {
         ]}
         onPress={() => setPreference("dark")}
       >
-        <Text
-          style={[
-            styles.optionText,
-            background === "#020817" ? {} : { color: "#0F172A" },
-          ]}
-        >
-          {" "}
+        <Text style={styles.optionText}>
           {preference === "dark" ? "◉" : "○"} 🌙 Tema Escuro (padrão)
         </Text>
       </Pressable>
@@ -47,20 +41,15 @@ export default function Preferencias() {
           background === "#020817"
             ? {}
             : {
-                backgroundColor: "#CEE7F2",
+                backgroundColor: "#95d4f1",
                 borderColor: "#C5D3DA",
                 borderWidth: 1,
               },
           preference === "light" && styles.selected,
-        ]}
-        onPress={() => setPreference("light")}
-      >
-        <Text
-          style={[
-            styles.optionText,
-            background === "#020817" ? {} : { color: "#0F172A" },
-          ]}
-        >
+        ]}  onPress={() => setPreference("light")}
+>
+      
+        <Text style={styles.optionText}>
           {preference === "light" ? "◉" : "○"} ☀️ Tema Claro
         </Text>
       </Pressable>
